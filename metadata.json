@@ -1,0 +1,5 @@
+{
+  "name": "Electrolysis Lab VR",
+  "description": "An interactive, physics-based electrolysis simulation that visualizes ion migration, electron flow, and gas evolution with AI-powered chemical analysis.",
+  "requestFramePermissions": []
+}
