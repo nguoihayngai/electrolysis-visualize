@@ -24,29 +24,29 @@ const translations = {
     header: "Lab Intelligence",
     noAnalysis: "Generate automated chemical analysis for this setup.",
     btnGenerate: "Analyze with AI",
-    btnUpdate: "Update Analysis",
+    btnUpdate: "Update",
     anodeHeader: "Anode Reaction",
     cathodeHeader: "Cathode Reaction",
     overallHeader: "Overall Equation",
     observationsHeader: "Visual Observations",
     applicationsHeader: "Applications",
-    chatTitle: "Ask Lab Assistant",
-    chatPlaceholder: "Ask about this reaction...",
-    chatIntro: "Hello! I'm your lab assistant. Ask me anything about this electrolysis setup."
+    chatTitle: "Lab Assistant",
+    chatPlaceholder: "Ask something...",
+    chatIntro: "Hello! How can I help with this reaction?"
   },
   [Language.VI]: {
     header: "Trí Tuệ Phòng Lab",
     noAnalysis: "Tạo phân tích hóa học tự động cho cấu hình này.",
-    btnGenerate: "Phân tích bằng AI",
-    btnUpdate: "Cập nhật phân tích",
+    btnGenerate: "Phân tích AI",
+    btnUpdate: "Cập nhật",
     anodeHeader: "Phản Ứng Tại Anode",
     cathodeHeader: "Phản Ứng Tại Cathode",
     overallHeader: "Phương Trình Tổng Quát",
     observationsHeader: "Quan Sát Hiện Tượng",
     applicationsHeader: "Ứng Dụng Thực Tế",
     chatTitle: "Hỏi Chuyên Gia Lab",
-    chatPlaceholder: "Hỏi về phản ứng này...",
-    chatIntro: "Chào bạn! Tôi là chuyên gia phòng lab. Bạn có thắc mắc gì về phản ứng này không?"
+    chatPlaceholder: "Hỏi về phản ứng...",
+    chatIntro: "Chào bạn! Tôi có thể giúp gì về phản ứng này không?"
   }
 };
 
@@ -64,7 +64,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
     }
   }, [messages, isChatLoading]);
 
-  // Reset chat if experiment settings change
   useEffect(() => {
     setMessages([]);
   }, [state.electrolyte, state.anodeMaterial, state.cathodeMaterial]);
@@ -79,82 +78,73 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
     setIsChatLoading(true);
 
     const response = await chatWithAI(userText, state);
-    setMessages(prev => [...prev, { role: 'ai', text: response || 'No response from assistant.' }]);
+    setMessages(prev => [...prev, { role: 'ai', text: response || 'No response.' }]);
     setIsChatLoading(false);
   };
 
   if (!isVisible) return null;
 
   return (
-    <aside className="w-[450px] border-l border-slate-800 bg-slate-900/50 backdrop-blur-xl flex flex-col shadow-2xl transition-all duration-500 animate-in slide-in-from-right relative">
+    <aside className="fixed inset-y-0 right-0 z-[60] w-full sm:w-[450px] border-l border-slate-800 bg-slate-900/95 sm:bg-slate-900/50 backdrop-blur-2xl flex flex-col shadow-2xl transition-all duration-300 animate-in slide-in-from-right shrink-0">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-slate-800/50">
+      <div className="flex items-center justify-between p-4 md:p-6 border-b border-slate-800/50">
         <div className="flex items-center gap-3">
-          <Sparkles className="w-5 h-5 text-amber-400" />
-          <h2 className="text-lg font-bold text-white">{t.header}</h2>
+          <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
+          <h2 className="text-base md:text-lg font-bold text-white truncate">{t.header}</h2>
         </div>
-        <div className="flex items-center gap-4">
-          {isLoading && (
-              <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" />
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              </div>
-          )}
-          <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400">
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6 md:space-y-8" ref={scrollRef}>
         {!analysis && !isLoading ? (
-          <div className="flex flex-col items-center justify-center h-[40vh] text-center gap-6">
+          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-6">
             <div className="relative">
-               <BrainCircuit className="w-16 h-16 text-slate-700" />
-               <Sparkles className="w-6 h-6 text-amber-500 absolute -top-1 -right-1 animate-pulse" />
+               <BrainCircuit className="w-12 h-12 md:w-16 md:h-16 text-slate-700" />
+               <Sparkles className="w-5 h-5 text-amber-500 absolute -top-1 -right-1 animate-pulse" />
             </div>
-            <p className="max-w-[250px] text-sm font-medium text-slate-400">{t.noAnalysis}</p>
+            <p className="max-w-[250px] text-xs md:text-sm font-medium text-slate-400">{t.noAnalysis}</p>
             <button 
               onClick={onFetchAnalysis}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-6 py-3 rounded-xl font-bold shadow-xl shadow-blue-900/20 transition-all hover:scale-105"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-6 py-3 rounded-xl font-bold shadow-xl shadow-blue-900/20 transition-all active:scale-95"
             >
               <Sparkles className="w-4 h-4" />
               {t.btnGenerate}
             </button>
           </div>
         ) : analysis ? (
-          <div className="space-y-8">
-            <section className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700/50">
-              <div className="flex items-center gap-2 mb-3 text-rose-400">
+          <div className="space-y-6 md:space-y-8 pb-10">
+            <section className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
+              <div className="flex items-center gap-2 mb-2 text-rose-400">
                 <FlaskConical className="w-4 h-4" />
-                <h3 className="text-xs font-bold uppercase">{t.anodeHeader}</h3>
+                <h3 className="text-[10px] font-bold uppercase">{t.anodeHeader}</h3>
               </div>
-              <p className="text-sm font-mono text-white leading-relaxed">{analysis.anodeReaction}</p>
+              <p className="text-xs md:text-sm font-mono text-white leading-relaxed">{analysis.anodeReaction}</p>
             </section>
 
-            <section className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700/50">
-              <div className="flex items-center gap-2 mb-3 text-emerald-400">
+            <section className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
+              <div className="flex items-center gap-2 mb-2 text-emerald-400">
                 <FlaskConical className="w-4 h-4" />
-                <h3 className="text-xs font-bold uppercase">{t.cathodeHeader}</h3>
+                <h3 className="text-[10px] font-bold uppercase">{t.cathodeHeader}</h3>
               </div>
-              <p className="text-sm font-mono text-white leading-relaxed">{analysis.cathodeReaction}</p>
+              <p className="text-xs md:text-sm font-mono text-white leading-relaxed">{analysis.cathodeReaction}</p>
             </section>
 
-            <section className="bg-blue-900/20 p-4 rounded-2xl border border-blue-500/20">
-              <div className="flex items-center gap-2 mb-3 text-blue-400">
+            <section className="bg-blue-900/20 p-4 rounded-xl border border-blue-500/20">
+              <div className="flex items-center gap-2 mb-2 text-blue-400">
                 <Target className="w-4 h-4" />
-                <h3 className="text-xs font-bold uppercase">{t.overallHeader}</h3>
+                <h3 className="text-[10px] font-bold uppercase">{t.overallHeader}</h3>
               </div>
-              <p className="text-sm font-mono font-bold text-blue-100">{analysis.overallEquation}</p>
+              <p className="text-xs md:text-sm font-mono font-bold text-blue-100">{analysis.overallEquation}</p>
             </section>
 
             <section>
-              <div className="flex items-center gap-2 mb-3 text-slate-400">
+              <div className="flex items-center gap-2 mb-2 text-slate-400">
                 <ListChecks className="w-4 h-4" />
-                <h3 className="text-xs font-bold uppercase">{t.observationsHeader}</h3>
+                <h3 className="text-[10px] font-bold uppercase">{t.observationsHeader}</h3>
               </div>
-              <p className="text-sm text-slate-300 leading-relaxed italic border-l-2 border-slate-700 pl-4">
+              <p className="text-xs md:text-sm text-slate-300 leading-relaxed italic border-l-2 border-slate-700 pl-4">
                 "{analysis.observations}"
               </p>
             </section>
@@ -163,31 +153,31 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
             <section className="pt-6 border-t border-slate-800/50">
               <div className="flex items-center gap-2 mb-4 text-blue-400">
                 <MessageSquare className="w-4 h-4" />
-                <h3 className="text-xs font-bold uppercase">{t.chatTitle}</h3>
+                <h3 className="text-[10px] font-bold uppercase">{t.chatTitle}</h3>
               </div>
               
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4 mb-4">
                 {messages.length === 0 && (
-                   <div className="text-xs text-slate-500 italic bg-slate-800/30 p-3 rounded-lg border border-slate-700/30">
+                   <div className="text-[10px] md:text-xs text-slate-500 italic bg-slate-800/30 p-3 rounded-lg border border-slate-700/30">
                      {t.chatIntro}
                    </div>
                 )}
                 {messages.map((msg, i) => (
-                  <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-blue-600' : 'bg-slate-800 border border-slate-700'}`}>
-                      {msg.role === 'user' ? <User className="w-4 h-4 text-white" /> : <BrainCircuit className="w-4 h-4 text-blue-400" />}
+                  <div key={i} className={`flex gap-2 md:gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-blue-600' : 'bg-slate-800 border border-slate-700'}`}>
+                      {msg.role === 'user' ? <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" /> : <BrainCircuit className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400" />}
                     </div>
-                    <div className={`p-3 rounded-2xl text-sm max-w-[80%] ${msg.role === 'user' ? 'bg-blue-600/20 text-blue-50 border border-blue-500/30' : 'bg-slate-800/60 text-slate-200 border border-slate-700/50'}`}>
+                    <div className={`p-2.5 md:p-3 rounded-2xl text-xs md:text-sm max-w-[85%] ${msg.role === 'user' ? 'bg-blue-600/20 text-blue-50 border border-blue-500/30' : 'bg-slate-800/60 text-slate-200 border border-slate-700/50'}`}>
                       {msg.text}
                     </div>
                   </div>
                 ))}
                 {isChatLoading && (
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
-                      <BrainCircuit className="w-4 h-4 text-blue-400 animate-pulse" />
+                  <div className="flex gap-2">
+                    <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+                      <BrainCircuit className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
                     </div>
-                    <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/50">
+                    <div className="p-2.5 rounded-2xl bg-slate-800/60 border border-slate-700/50">
                       <div className="flex gap-1">
                         <div className="w-1 h-1 bg-slate-500 rounded-full animate-bounce" />
                         <div className="w-1 h-1 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
@@ -202,7 +192,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
         ) : (
           <div className="space-y-6 animate-pulse">
               {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="h-24 bg-slate-800/50 rounded-2xl" />
+                  <div key={i} className="h-20 bg-slate-800/50 rounded-xl" />
               ))}
           </div>
         )}
@@ -210,28 +200,28 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
 
       {/* Chat Input */}
       {analysis && (
-        <div className="p-4 border-t border-slate-800/50 bg-slate-900/80">
+        <div className="p-3 md:p-4 border-t border-slate-800/50 bg-slate-900/95 sticky bottom-0">
           <form onSubmit={handleSendMessage} className="relative">
             <input 
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={t.chatPlaceholder}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-white placeholder:text-slate-500 transition-all"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-4 pr-10 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-white placeholder:text-slate-500"
             />
             <button 
               type="submit"
               disabled={!inputValue.trim() || isChatLoading}
-              className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:hover:bg-blue-600 text-white rounded-lg transition-all"
+              className="absolute right-1.5 top-1.5 p-1.5 bg-blue-600 disabled:opacity-30 text-white rounded-lg active:scale-90 transition-transform"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
             </button>
           </form>
-          <div className="mt-3 flex justify-center">
+          <div className="mt-2 flex justify-center">
             <button 
               disabled={isLoading}
               onClick={onFetchAnalysis}
-              className="flex items-center gap-2 text-slate-500 hover:text-slate-300 text-[10px] font-bold uppercase transition-all"
+              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 text-[9px] font-bold uppercase"
             >
               <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
               {t.btnUpdate}

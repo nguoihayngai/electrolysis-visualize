@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { SimState, ElectrolyteType, ElectrodeMaterial, Language } from '../types';
-import { Globe } from 'lucide-react';
 
 interface ControlsProps {
   state: SimState;
@@ -16,7 +15,6 @@ const translations = {
     membrane: "Semipermeable Membrane",
     autoReplenish: "Auto-replenish Solute",
     voltage: "DC Voltage",
-    language: "Language / Ngôn ngữ",
     electrolytes: {
       [ElectrolyteType.WATER]: 'Water (Acidified)',
       [ElectrolyteType.CUSO4]: 'Copper(II) Sulfate',
@@ -36,7 +34,6 @@ const translations = {
     membrane: "Màng bán thấm",
     autoReplenish: "Tự động bổ sung chất tan",
     voltage: "Điện áp DC",
-    language: "Ngôn ngữ / Language",
     electrolytes: {
       [ElectrolyteType.WATER]: 'Nước (Axit hóa)',
       [ElectrolyteType.CUSO4]: 'Đồng(II) Sunfat',
@@ -60,27 +57,6 @@ const Controls: React.FC<ControlsProps> = ({ state, setState }) => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-slate-400 mb-1">
-          <Globe className="w-3 h-3" />
-          <label className="text-xs font-semibold">{t.language}</label>
-        </div>
-        <div className="flex bg-slate-800 rounded-lg p-1">
-          <button 
-            onClick={() => handleChange('language', Language.EN)}
-            className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all ${state.language === Language.EN ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            English
-          </button>
-          <button 
-            onClick={() => handleChange('language', Language.VI)}
-            className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all ${state.language === Language.VI ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Tiếng Việt
-          </button>
-        </div>
-      </div>
-
       <div className="space-y-2">
         <label className="text-xs font-semibold text-slate-400">{t.electrolyte}</label>
         <select 

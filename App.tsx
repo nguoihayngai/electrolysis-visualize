@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Settings, Play, Pause, RefreshCw, Zap, Beaker, Atom, Sparkles } from 'lucide-react';
+import { Settings, Play, Pause, RefreshCw, Zap, Beaker, Atom, Sparkles, Activity, Menu, X } from 'lucide-react';
 import ElectrolysisSim from './components/ElectrolysisSim';
 import Controls from './components/Controls';
 import AnalysisPanel from './components/AnalysisPanel';
-import SoluteStats from './components/SoluteStats';
+import MonitorWindow from './components/MonitorWindow';
 import { SimState, ElectrolyteType, ElectrodeMaterial, Language, SoluteStats as IStats } from './types';
 import { getChemicalAnalysis } from './services/geminiService';
 
@@ -13,17 +13,12 @@ const translations = {
     title: "Electrolysis",
     lab: "Lab",
     subtitle: "Virtual Molecular Simulator",
-    start: "Start Lab",
+    start: "Start",
     stop: "Stop",
     config: "Experiment Config",
-    monitor: "Physics Monitor",
-    current: "Current (I)",
-    resistance: "Resistance",
-    cations: "Cations (+)",
-    anions: "Anions (-)",
-    electrons: "Electrons (e-)",
     aiActive: "AI Analysis Optional",
-    showAnalysis: "Show Lab Intelligence"
+    showAnalysis: "Lab Intelligence",
+    showMonitor: "Monitor"
   },
   [Language.VI]: {
     title: "Điện Phân",
@@ -32,14 +27,9 @@ const translations = {
     start: "Bắt Đầu",
     stop: "Dừng",
     config: "Cấu Hình Thí Nghiệm",
-    monitor: "Theo Dõi Vật Lý",
-    current: "Dòng Điện (I)",
-    resistance: "Điện Trở",
-    cations: "Cation (+)",
-    anions: "Anion (-)",
-    electrons: "Electron (e-)",
-    aiActive: "Phân tích AI theo yêu cầu",
-    showAnalysis: "Xem Trí Tuệ Phòng Lab"
+    aiActive: "AI Phân tích",
+    showAnalysis: "Trí Tuệ Lab",
+    showMonitor: "Chỉ Số"
   }
 };
 
@@ -66,6 +56,8 @@ const App: React.FC = () => {
   const [analysis, setAnalysis] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
+  const [isMonitorExpanded, setIsMonitorExpanded] = useState(window.innerWidth > 768);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
   const t = useMemo(() => translations[state.language], [state.language]);
 
@@ -79,6 +71,10 @@ const App: React.FC = () => {
 
   const toggleSimulation = () => {
     setState(prev => ({ ...prev, isRunning: !prev.isRunning }));
+  };
+
+  const handleLanguageChange = (lang: Language) => {
+    setState(prev => ({ ...prev, language: lang }));
   };
 
   const resetSimulation = () => {
@@ -104,93 +100,142 @@ const App: React.FC = () => {
   };
 
   const calculatedCurrent = useMemo(() => {
-    if (!state.isRunning) return "0.00";
+    if (!state.isRunning) return 0;
     const totalIons = stats.cationCount + stats.anionCount;
-    const current = (state.voltage * 1.25) * (totalIons / 40);
-    return current.toFixed(2);
+    return (state.voltage * 1.25) * (totalIons / 40);
   }, [state.isRunning, state.voltage, stats.cationCount, stats.anionCount]);
 
   return (
     <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
-      <header className="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/50 backdrop-blur-md z-10">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-500/20">
-            <Beaker className="w-6 h-6 text-white" />
+      <header className="h-16 border-b border-slate-800 flex items-center justify-between px-4 md:px-6 bg-slate-900/50 backdrop-blur-md z-40 shrink-0">
+        <div className="flex items-center gap-2 md:gap-6">
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 lg:hidden hover:bg-slate-800 rounded-lg text-slate-400"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+          
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="bg-blue-600 p-1.5 md:p-2 rounded-lg shadow-lg shadow-blue-500/20">
+              <Beaker className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            </div>
+            <div className="hidden xs:block">
+              <h1 className="text-sm md:text-xl font-bold tracking-tight text-white">{t.title}<span className="text-blue-400">{t.lab}</span></h1>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">{t.title}<span className="text-blue-400">{t.lab}</span></h1>
-            <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold">{t.subtitle}</p>
+          
+          <div className="flex bg-slate-800/80 rounded-full p-0.5 border border-slate-700/50">
+            <button 
+              onClick={() => handleLanguageChange(Language.EN)}
+              className={`px-2 md:px-3 py-1 text-[9px] md:text-[10px] font-bold uppercase rounded-full transition-all ${state.language === Language.EN ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
+            >
+              EN
+            </button>
+            <button 
+              onClick={() => handleLanguageChange(Language.VI)}
+              className={`px-2 md:px-3 py-1 text-[9px] md:text-[10px] font-bold uppercase rounded-full transition-all ${state.language === Language.VI ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
+            >
+              VI
+            </button>
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <button 
             onClick={toggleSimulation}
-            className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold transition-all ${
+            className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-bold transition-all ${
               state.isRunning 
-                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-900/20' 
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20'
+                ? 'bg-rose-600 hover:bg-rose-500 text-white' 
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
             }`}
           >
-            {state.isRunning ? <><Pause className="w-4 h-4" /> {t.stop}</> : <><Play className="w-4 h-4" /> {t.start}</>}
+            {state.isRunning ? <><Pause className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">{t.stop}</span></> : <><Play className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">{t.start}</span></>}
+            {/* Visual indicator for mobile when text is hidden */}
+            <span className="sm:hidden">{state.isRunning ? 'Stop' : 'Run'}</span>
           </button>
           <button 
             onClick={resetSimulation}
-            className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
-            title="Reset Simulation"
+            className="p-1.5 md:p-2 hover:bg-slate-800 rounded-full text-slate-400"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
       </header>
 
       <main className="flex-1 flex overflow-hidden relative">
-        <aside className="w-80 border-r border-slate-800 bg-slate-900/30 overflow-y-auto p-6 flex flex-col gap-8 custom-scrollbar">
+        {/* Responsive Sidebar */}
+        <aside className={`
+          fixed inset-y-0 left-0 z-50 w-72 md:w-80 border-r border-slate-800 bg-slate-900/95 lg:bg-slate-900/30 backdrop-blur-xl lg:backdrop-blur-none
+          transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          overflow-y-auto p-6 flex flex-col gap-8 custom-scrollbar
+        `}>
+          <div className="flex lg:hidden items-center justify-between mb-2">
+            <h2 className="text-sm font-bold uppercase text-blue-400">{t.config}</h2>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-500 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
           <section>
-            <div className="flex items-center gap-2 mb-4 text-blue-400">
+            <div className="hidden lg:flex items-center gap-2 mb-4 text-blue-400">
               <Settings className="w-4 h-4" />
               <h2 className="text-sm font-bold uppercase tracking-wider">{t.config}</h2>
             </div>
             <Controls state={state} setState={setState} />
           </section>
-
-          <section>
-            <SoluteStats stats={stats} language={state.language} electrolyte={state.electrolyte} />
-          </section>
-
-          <section>
-            <div className="flex items-center gap-2 mb-4 text-emerald-400">
-              <Zap className="w-4 h-4" />
-              <h2 className="text-sm font-bold uppercase tracking-wider">{t.monitor}</h2>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">{t.current}</p>
-                    <p className="text-xl font-mono text-white">{calculatedCurrent}<span className="text-sm text-slate-500 ml-1">mA</span></p>
-                </div>
-                <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">{t.resistance}</p>
-                    <p className="text-xl font-mono text-white">4.8<span className="text-sm text-slate-500 ml-1">kΩ</span></p>
-                </div>
-            </div>
-          </section>
         </aside>
 
-        <div className="flex-1 flex flex-col relative bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
-          <div className="absolute inset-0 opacity-20 pointer-events-none" 
+        {/* Overlay for mobile sidebar */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        <div className="flex-1 flex flex-col relative bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black overflow-hidden">
+          <div className="absolute inset-0 opacity-10 pointer-events-none" 
             style={{ backgroundImage: 'radial-gradient(#2563eb 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} 
           />
-          <ElectrolysisSim state={state} onStatsUpdate={setStats} />
           
-          {!isAnalysisExpanded && (state.isRunning || analysis) && (
-            <button 
-              onClick={() => setIsAnalysisExpanded(true)}
-              className="absolute right-6 top-6 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border border-slate-700 p-3 rounded-full shadow-2xl transition-all hover:scale-110 flex items-center gap-2 group z-20"
-            >
-              <Sparkles className="w-5 h-5 text-amber-400 group-hover:rotate-12 transition-transform" />
-              <span className="text-xs font-bold uppercase tracking-widest pr-2 hidden group-hover:block transition-all">{t.showAnalysis}</span>
-            </button>
-          )}
+          <div className="flex-1 w-full h-full">
+            <ElectrolysisSim state={state} onStatsUpdate={setStats} />
+          </div>
+          
+          {/* Action Buttons Layer */}
+          <div className="absolute right-4 md:right-6 top-4 md:top-6 flex flex-col gap-3 items-end z-20">
+            {!isAnalysisExpanded && (state.isRunning || analysis) && (
+              <button 
+                onClick={() => setIsAnalysisExpanded(true)}
+                className="bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border border-slate-700 p-3 rounded-full shadow-2xl transition-all flex items-center gap-2 group"
+              >
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                <span className="text-xs font-bold uppercase tracking-widest pr-1 hidden sm:block">{t.showAnalysis}</span>
+              </button>
+            )}
+          </div>
+
+          <div className="absolute left-4 md:left-6 bottom-4 md:bottom-6 z-20 flex flex-col items-start gap-4 max-w-[calc(100%-2rem)]">
+            {!isMonitorExpanded && (
+              <button 
+                onClick={() => setIsMonitorExpanded(true)}
+                className="bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border border-slate-700 p-3 rounded-full shadow-2xl transition-all flex items-center gap-2"
+              >
+                <Activity className="w-5 h-5 text-emerald-400" />
+                <span className="text-xs font-bold uppercase tracking-widest pr-1 hidden sm:block">{t.showMonitor}</span>
+              </button>
+            )}
+            
+            <MonitorWindow 
+              isVisible={isMonitorExpanded}
+              onClose={() => setIsMonitorExpanded(false)}
+              stats={stats}
+              current={calculatedCurrent}
+              language={state.language}
+              electrolyte={state.electrolyte}
+            />
+          </div>
         </div>
 
         <AnalysisPanel 
@@ -204,15 +249,15 @@ const App: React.FC = () => {
         />
       </main>
       
-      <footer className="h-8 border-t border-slate-800 bg-slate-900/80 flex items-center px-6 justify-between text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-        <div className="flex gap-4">
-          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {t.cations}</span>
-          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-rose-500"></div> {t.anions}</span>
-          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-400"></div> {t.electrons}</span>
+      <footer className="h-8 border-t border-slate-800 bg-slate-900/80 flex items-center px-4 md:px-6 justify-between text-[9px] md:text-[10px] text-slate-500 uppercase tracking-widest font-bold shrink-0">
+        <div className="flex gap-2 md:gap-4 overflow-hidden">
+          <span className="flex items-center gap-1 whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Cat(+)</span>
+          <span className="flex items-center gap-1 whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div> Ani(-)</span>
+          <span className="hidden xs:flex items-center gap-1 whitespace-nowrap"><div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div> e⁻</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
             <Atom className="w-3 h-3" />
-            <span>{t.aiActive}</span>
+            <span className="truncate max-w-[100px] md:max-w-none">{t.aiActive}</span>
         </div>
       </footer>
     </div>

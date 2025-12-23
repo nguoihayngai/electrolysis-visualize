@@ -24,37 +24,31 @@ const translations = {
     anode: "ANODE (+)",
     efield: "E-FIELD",
     dissociation: "Dissociation",
-    reduction: "Reduction (Gain e⁻)",
-    oxidation: "Oxidation (Loss e⁻)",
-    dissolving: "Anode Dissolving (Cu → Cu²⁺)",
-    reductionBrief: "Reduction",
-    oxidationBrief: "Oxidation",
-    bulk: "Bulk Reaction (Javel Water)",
-    bleach: "Cl2 + 2NaOH → NaClO + NaCl + H2O",
+    reduction: "Reduction",
+    oxidation: "Oxidation",
+    dissolving: "Anode Dissolving",
+    reductionBrief: "Reduc.",
+    oxidationBrief: "Oxid.",
+    bulk: "Javel Reaction",
     forms: "Forms",
-    hydrogen: "H2 (Hydrogen)",
-    oxygen: "O2 (Oxygen)",
-    reductionWater: "Reduction (H2 Release)",
-    oxidationWater: "Oxidation (O2 Release)"
+    reductionWater: "Reduc. (H2)",
+    oxidationWater: "Oxid. (O2)"
   },
   [Language.VI]: {
     membrane: "Màng Bán Thấm",
-    cathode: "CỰC ÂM (CATHODE)",
-    anode: "CỰC DƯƠNG (ANODE)",
+    cathode: "CỰC ÂM",
+    anode: "CỰC DƯƠNG",
     efield: "ĐIỆN TRƯỜNG",
-    dissociation: "Phân ly ion",
-    reduction: "Sự khử (Nhận e⁻)",
-    oxidation: "Sự oxi hóa (Nhường e⁻)",
-    dissolving: "Anode tan (Cu → Cu²⁺)",
-    reductionBrief: "Sự khử",
-    oxidationBrief: "Sự oxi hóa",
-    bulk: "Phản ứng tạo nước Javel",
-    bleach: "Cl2 + 2NaOH → NaClO + NaCl + H2O",
+    dissociation: "Phân ly",
+    reduction: "Sự khử",
+    oxidation: "Sự oxi hóa",
+    dissolving: "Anode tan",
+    reductionBrief: "Khử",
+    oxidationBrief: "Oxi hóa",
+    bulk: "Tạo Javel",
     forms: "Tạo",
-    hydrogen: "Khí Hidro (H2)",
-    oxygen: "Khí Oxi (O2)",
-    reductionWater: "Sự khử (Giải phóng H2)",
-    oxidationWater: "Sự oxi hóa (Giải phóng O2)"
+    reductionWater: "Khử (H2)",
+    oxidationWater: "Oxi hóa (O2)"
   }
 };
 
@@ -161,22 +155,20 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
         y: WATER_TOP + 20 + Math.random() * (BEAKER_BOTTOM - WATER_TOP - 40),
         type: isCation ? 'cation' : 'anion',
         label: isCation ? ionConfig.cation : ionConfig.anion,
-        vx: (Math.random() - 0.5) * 0.75, // Increased initial jitter
+        vx: (Math.random() - 0.5) * 0.75,
         vy: (Math.random() - 0.5) * 0.75,
       });
     }
     setParticles(initialParticles);
     setEvents([]);
-  }, [state.electrolyte, ionConfig.cation, ionConfig.anion, state.hasMembrane]);
+  }, [state.electrolyte, state.anodeMaterial, state.cathodeMaterial, state.hasMembrane]);
 
   const animate = () => {
-    setEvents(prev => prev.map(e => ({ ...e, life: e.life - 0.012 })).filter(e => e.life > 0));
+    setEvents(prev => prev.map(e => ({ ...e, life: e.life - 0.015 })).filter(e => e.life > 0));
 
     setParticles(prevParticles => {
       let nextParticles = [...prevParticles];
-      // Increased base drift force multiplier by 50% (0.018 -> 0.027)
       const driftForce = state.isRunning ? state.voltage * 0.027 : 0;
-      // Increased thermal jitter by 50% (0.12 -> 0.18)
       const thermalJitter = 0.18;
 
       if (state.isRunning) {
@@ -196,7 +188,7 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
 
       nextParticles = nextParticles.map(p => {
         if (p.type === 'electron') {
-          p.progress = (p.progress || 0) + 0.025 * (state.voltage / 12 + 0.5);
+          p.progress = (p.progress || 0) + 0.03 * (state.voltage / 12 + 0.5);
           return p;
         }
 
@@ -206,7 +198,6 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
           p.vy += (Math.random() - 0.5) * thermalJitter;
 
           if (state.isRunning) {
-            // Increased attraction multiplier by 50% (0.0006 -> 0.0009)
             if (p.type === 'cation') p.vx += (CATHODE_X - p.x) * 0.0009 * driftForce;
             else p.vx += (ANODE_X - p.x) * 0.0009 * driftForce;
           }
@@ -248,7 +239,7 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
                 secondaryMolarityRef.current += 0.001;
               }
               const secondary = ionConfig.secondaryTrigger === 'cathode' ? ionConfig.secondaryProduct : '';
-              let subtext = secondary ? `${t.reductionBrief} (${t.forms} ${secondary})` : t.reduction;
+              let subtext = secondary ? `${t.reductionBrief} (${secondary})` : t.reduction;
               if (state.electrolyte === ElectrolyteType.WATER) { subtext = t.reductionWater || subtext; }
 
               setEvents(ev => [...ev, { id: Math.random(), x: p.x, y: p.y, text: ionConfig.cathodeProduct, subtext, type: 'reduction', life: 1.0 }]);
@@ -267,17 +258,10 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
                    y: p.y,
                    type: 'cation',
                    label: 'Cu2+',
-                   vx: -1.2 - Math.random() * 0.75, // Increased ejection speed
+                   vx: -1.2 - Math.random() * 0.75,
                    vy: (Math.random() - 0.5) * 0.75
                  });
-                 setEvents(ev => [...ev, { 
-                   id: Math.random(), 
-                   x: ANODE_X, y: p.y, 
-                   text: 'Cu2+', 
-                   subtext: t.dissolving, 
-                   type: 'oxidation', 
-                   life: 1.0 
-                 }]);
+                 setEvents(ev => [...ev, { id: Math.random(), x: ANODE_X, y: p.y, text: 'Cu2+', subtext: t.dissolving, type: 'oxidation', life: 1.0 }]);
                  return true; 
               } else {
                 if (state.electrolyte === ElectrolyteType.CUSO4) {
@@ -285,7 +269,7 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
                   secondaryMolarityRef.current += 0.001;
                 }
                 const secondary = ionConfig.secondaryTrigger === 'anode' ? ionConfig.secondaryProduct : '';
-                let subtext = secondary ? `${t.oxidationBrief} (${t.forms} ${secondary})` : t.oxidation;
+                let subtext = secondary ? `${t.oxidationBrief} (${secondary})` : t.oxidation;
                 if (state.electrolyte === ElectrolyteType.WATER) { subtext = t.oxidationWater || subtext; }
 
                 setEvents(ev => [...ev, { id: Math.random(), x: p.x, y: p.y, text: ionConfig.anodeProduct, subtext, type: 'oxidation', life: 1.0 }]);
@@ -302,24 +286,14 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
          if (Math.random() < 0.02) {
              const bx = CENTER_X + (Math.random() - 0.5) * 100;
              const by = WATER_TOP + 50 + Math.random() * 150;
-             setEvents(ev => [...ev, {
-               id: Math.random(),
-               x: bx, y: by,
-               text: "NaClO",
-               subtext: t.bulk,
-               type: 'bulk',
-               life: 1.5
-             }]);
+             setEvents(ev => [...ev, { id: Math.random(), x: bx, y: by, text: "NaClO", subtext: t.bulk, type: 'bulk', life: 1.5 }]);
              secondaryMolarityRef.current += 0.0005;
          }
       }
 
       nextParticles = [...filteredParticles, ...currentNewParticles];
 
-      const cCount = nextParticles.filter(p => p.type === 'cation').length;
-      const aCount = nextParticles.filter(p => p.type === 'anion').length;
-
-      if (state.autoReplenish && (cCount < 20 || aCount < 20)) {
+      if (state.autoReplenish && nextParticles.filter(p => p.type === 'cation').length < 20) {
         const sx = CENTER_X + (Math.random() - 0.5) * 40;
         const sy = WATER_TOP + 40 + Math.random() * (BEAKER_BOTTOM - WATER_TOP - 80);
         setEvents(ev => [...ev, { id: Math.random(), x: sx, y: sy, text: ionConfig.sourceLabel, subtext: t.dissociation, type: 'dissociation', life: 0.8 }]);
@@ -328,8 +302,8 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
       }
 
       onStatsUpdate({
-        cationCount: cCount,
-        anionCount: aCount,
+        cationCount: nextParticles.filter(p => p.type === 'cation').length,
+        anionCount: nextParticles.filter(p => p.type === 'anion').length,
         ph: phRef.current,
         temp: tempRef.current,
         secondaryProductMolarity: secondaryMolarityRef.current
@@ -361,8 +335,12 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-8 select-none">
-      <svg viewBox="0 0 600 650" className="w-full h-full max-w-[850px] drop-shadow-2xl overflow-visible">
+    <div className="w-full h-full flex items-center justify-center p-2 sm:p-8 overflow-hidden touch-none">
+      <svg 
+        viewBox="0 0 600 650" 
+        className="w-full h-full max-h-[85vh] drop-shadow-2xl overflow-visible"
+        preserveAspectRatio="xMidYMid meet"
+      >
         <style>
           {` @keyframes march { to { stroke-dashoffset: -32; } } .wire-flow { stroke-dasharray: 8, 24; animation: march 0.4s linear infinite; } .wire-glow { filter: blur(4px); opacity: 0.6; } `}
         </style>
@@ -375,18 +353,15 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
             <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
             <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.1" />
           </linearGradient>
-          <filter id="glow-small"><feGaussianBlur stdDeviation="1" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter>
           <filter id="glow-electron"><feGaussianBlur stdDeviation="2" result="blur" /><feColorMatrix type="matrix" values="0 0 0 0 1   0 0 0 0 0.9   0 0 0 0 0.1  0 0 0 1 0" /><feComposite in="SourceGraphic" operator="over" /></filter>
-          <filter id="glow-bulk">
-            <feGaussianBlur stdDeviation="12" result="blur" />
-            <feColorMatrix type="matrix" values="0 0 0 0 0.6   0 0 0 0 1   0 0 0 0 0.3  0 0 0 1 0" />
-            <feComposite in="SourceGraphic" operator="over" />
-          </filter>
+          <filter id="glow-bulk"><feGaussianBlur stdDeviation="12" result="blur" /><feColorMatrix type="matrix" values="0 0 0 0 0.6   0 0 0 0 1   0 0 0 0 0.3  0 0 0 1 0" /><feComposite in="SourceGraphic" operator="over" /></filter>
         </defs>
 
+        {/* Beaker & Water */}
         <path d="M 150 200 L 150 550 Q 150 585 185 585 L 415 585 Q 450 585 450 550 L 450 200" fill="url(#beakerGrad)" stroke="#475569" strokeWidth="8" strokeLinecap="round" />
         <rect x="158" y="300" width="284" height="277" fill="url(#waterGrad)" rx="2" />
 
+        {/* Membrane */}
         {state.hasMembrane && (
           <g>
             <line x1="300" y1="300" x2="300" y2="575" stroke="#38bdf8" strokeWidth="3" strokeDasharray="8,8" strokeOpacity="0.6" className="animate-pulse" />
@@ -394,9 +369,11 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
           </g>
         )}
 
+        {/* Power Supply */}
         <rect x="250" y="20" width="100" height="60" rx="12" fill="#1e293b" stroke="#334155" strokeWidth="3" />
         <text x="300" y="55" textAnchor="middle" fill="#22c55e" className="text-[12px] font-mono font-bold tracking-tighter">DC POWER</text>
 
+        {/* Wires */}
         <path d="M 250 50 L 80 50 L 80 200 L 220 200 L 220 250" fill="none" stroke="#dc2626" strokeWidth="6" strokeLinecap="round" strokeOpacity="0.3" />
         <path d="M 350 50 L 520 50 L 520 200 L 380 200 L 380 250" fill="none" stroke="#2563eb" strokeWidth="6" strokeLinecap="round" strokeOpacity="0.3" />
 
@@ -409,41 +386,24 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
           </>
         )}
 
+        {/* Electrodes */}
         <rect x="210" y="250" width="20" height="280" fill={getElectrodeColor(state.cathodeMaterial)} fillOpacity="0.95" rx="3" stroke="#0f172a" strokeWidth="1" />
         <rect x="370" y="250" width="20" height="280" fill={getElectrodeColor(state.anodeMaterial)} fillOpacity="0.95" rx="3" stroke="#0f172a" strokeWidth="1" />
         
         <text x="220" y="240" textAnchor="middle" fill="#94a3b8" className="text-[10px] font-bold tracking-widest">{t.cathode}</text>
         <text x="380" y="240" textAnchor="middle" fill="#94a3b8" className="text-[10px] font-bold tracking-widest">{t.anode}</text>
 
-        {events.map(e => (
-          <g key={e.id} transform={`translate(${e.x}, ${e.y - (1 - e.life) * 80})`}>
-             <circle 
-                r={e.type === 'bulk' ? (40 * (1 - e.life) + 20) : (20 * (1 - e.life) + 12)} 
-                fill={e.type === 'reduction' ? '#3b82f6' : e.type === 'oxidation' ? '#f43f5e' : e.type === 'bulk' ? '#bef264' : '#facc15'} 
-                fillOpacity={e.life * 0.4} 
-                filter={e.type === 'bulk' ? 'url(#glow-bulk)' : ''}
-                className={e.type === 'bulk' ? 'animate-pulse' : ''} 
-             />
-             <ChemicalFormula formula={e.text} x={0} y={-22} opacity={e.life} className={`${e.type === 'bulk' ? 'text-lg' : 'text-sm'} font-mono font-bold tracking-tighter drop-shadow-lg`} />
-             <text textAnchor="middle" y={4} fill="white" fillOpacity={e.life * 0.8} className="text-[8px] font-bold uppercase tracking-widest">{e.subtext}</text>
-          </g>
-        ))}
-
+        {/* Particles */}
         {particles.map(p => {
           if (p.type === 'electron') {
             const pos = getElectronPos(p.progress || 0, p.pathType!);
-            return (
-              <g key={p.id}>
-                <circle cx={pos.x} cy={pos.y} r="3" fill="#fbbf24" filter="url(#glow-electron)" />
-                {Math.random() < 0.05 && <text x={pos.x} y={pos.y - 6} textAnchor="middle" fill="#fbbf24" className="text-[7px] font-bold pointer-events-none select-none">e⁻</text>}
-              </g>
-            );
+            return <circle key={p.id} cx={pos.x} cy={pos.y} r="3" fill="#fbbf24" filter="url(#glow-electron)" />;
           }
           if (p.type === 'cation') {
             return (
               <g key={p.id}>
                 <circle cx={p.x} cy={p.y} r="7" fill="#3b82f6" fillOpacity="0.85" stroke="#60a5fa" strokeWidth="1" />
-                <text x={p.x} y={p.y + 3} textAnchor="middle" fill="white" className="text-[8px] font-bold pointer-events-none select-none">{p.label}</text>
+                <text x={p.x} y={p.y + 3} textAnchor="middle" fill="white" className="text-[8px] font-bold pointer-events-none">{p.label}</text>
               </g>
             );
           }
@@ -451,7 +411,7 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
             return (
               <g key={p.id}>
                 <circle cx={p.x} cy={p.y} r="7" fill="#f43f5e" fillOpacity="0.85" stroke="#fb7185" strokeWidth="1" />
-                <text x={p.x} y={p.y + 3} textAnchor="middle" fill="white" className="text-[8px] font-bold pointer-events-none select-none">{p.label}</text>
+                <text x={p.x} y={p.y + 3} textAnchor="middle" fill="white" className="text-[8px] font-bold pointer-events-none">{p.label}</text>
               </g>
             );
           }
@@ -471,10 +431,20 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
           return null;
         })}
 
+        {/* Reaction Events */}
+        {events.map(e => (
+          <g key={e.id} transform={`translate(${e.x}, ${e.y - (1 - e.life) * 80})`}>
+             <circle r={e.type === 'bulk' ? (40 * (1 - e.life) + 20) : (20 * (1 - e.life) + 12)} fill={e.type === 'reduction' ? '#3b82f6' : e.type === 'oxidation' ? '#f43f5e' : e.type === 'bulk' ? '#bef264' : '#facc15'} fillOpacity={e.life * 0.4} filter={e.type === 'bulk' ? 'url(#glow-bulk)' : ''} />
+             <ChemicalFormula formula={e.text} x={0} y={-22} opacity={e.life} className={`${e.type === 'bulk' ? 'text-lg' : 'text-xs'} font-mono font-bold`} />
+             <text textAnchor="middle" y={4} fill="white" fillOpacity={e.life * 0.8} className="text-[7px] font-bold uppercase">{e.subtext}</text>
+          </g>
+        ))}
+
+        {/* Voltage Display */}
         <g transform="translate(480, 550)">
             <rect width="100" height="60" rx="12" fill="#0f172a" stroke="#334155" strokeWidth="2" />
             <text x="50" y="22" textAnchor="middle" fill="#94a3b8" className="text-[10px] font-bold uppercase tracking-widest">{t.efield}</text>
-            <text x="50" y="48" textAnchor="middle" fill="white" className="text-xl font-mono font-bold">{(state.isRunning ? state.voltage : 0).toFixed(1)}V</text>
+            <text x="50" y="48" textAnchor="middle" fill="white" className="text-lg md:text-xl font-mono font-bold">{(state.isRunning ? state.voltage : 0).toFixed(1)}V</text>
         </g>
       </svg>
     </div>
