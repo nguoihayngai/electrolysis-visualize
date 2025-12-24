@@ -33,6 +33,7 @@ export interface SimState {
   isRunning: boolean;
   hasMembrane: boolean;
   autoReplenish: boolean;
+  autoAnalyze: boolean;
   language: Language;
 }
 

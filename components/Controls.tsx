@@ -14,6 +14,7 @@ const translations = {
     cathode: "Cathode (-) Material",
     membrane: "Semipermeable Membrane",
     autoReplenish: "Auto-replenish Solute",
+    autoAnalyze: "Auto AI Analysis",
     voltage: "DC Voltage",
     electrolytes: {
       [ElectrolyteType.WATER]: 'Water (Acidified)',
@@ -33,6 +34,7 @@ const translations = {
     cathode: "Vật liệu Cathode (-)",
     membrane: "Màng bán thấm",
     autoReplenish: "Tự động bổ sung chất tan",
+    autoAnalyze: "Tự động phân tích AI",
     voltage: "Điện áp DC",
     electrolytes: {
       [ElectrolyteType.WATER]: 'Nước (Axit hóa)',
@@ -114,6 +116,16 @@ const Controls: React.FC<ControlsProps> = ({ state, setState }) => {
             className={`w-10 h-5 rounded-full transition-colors relative ${state.autoReplenish ? 'bg-blue-600' : 'bg-slate-700'}`}
           >
             <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${state.autoReplenish ? 'left-6' : 'left-1'}`} />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+          <label className="text-xs font-semibold text-slate-400">{t.autoAnalyze}</label>
+          <button 
+            onClick={() => handleChange('autoAnalyze', !state.autoAnalyze)}
+            className={`w-10 h-5 rounded-full transition-colors relative ${state.autoAnalyze ? 'bg-blue-600' : 'bg-slate-700'}`}
+          >
+            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${state.autoAnalyze ? 'left-6' : 'left-1'}`} />
           </button>
         </div>
       </div>
