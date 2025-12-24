@@ -420,7 +420,7 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
             if (p.type === 'bubble_h') { label = 'H2'; r = 5; }
             if (p.type === 'bubble_o') { label = 'O2'; r = 7; }
             if (p.type === 'bubble_cl') { label = 'Cl2'; r = 7; color = '#bef264'; }
-            if (p.type === 'bubble_i') { label = 'I2'; r = 6; color = '#78350f'; }
+            if (p.type === 'bubble_i') { label = 'I2'; r = 6; color = '#a855f7'; }
             return (
               <g key={p.id}>
                 <circle cx={p.x} cy={p.y} r={r} fill={color} fillOpacity="0.2" stroke={color} strokeWidth="0.8" />

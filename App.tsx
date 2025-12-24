@@ -113,7 +113,7 @@ const App: React.FC = () => {
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 lg:hidden hover:bg-slate-800 rounded-lg text-slate-400"
           >
-            <Menu className="w-6 h-6" />
+            <Settings className="w-6 h-6" />
           </button>
           
           <div className="flex items-center gap-2 md:gap-3">
