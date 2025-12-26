@@ -13,25 +13,25 @@ const translations = {
     title: "Electrolysis",
     lab: "Lab",
     config: "Experiment Config",
-    aiActive: "AI Core Active (Free Tier)",
+    aiActive: "AI Core Active",
     showAnalysis: "Lab Intelligence",
     showMonitor: "Monitor",
     activateAI: "API Key Required",
     activateDesc: "To enable AI features, please provide a Gemini API key. You can get a free key from Google AI Studio and add it to your environment variables.",
-    getFreeKey: "Get Free API Key",
-    setupGuide: "Cloudflare Setup Guide"
+    getFreeKey: "Connect API Key",
+    setupGuide: "Cloudflare Guide"
   },
   [Language.VI]: {
     title: "Điện Phân",
     lab: "Lab",
     config: "Cấu Hình Thí Nghiệm",
-    aiActive: "AI Hoạt động (Miễn Phí)",
+    aiActive: "AI Hoạt động",
     showAnalysis: "Trí Tuệ Lab",
     showMonitor: "Chỉ Số",
     activateAI: "Yêu cầu API Key",
     activateDesc: "Để sử dụng AI, bạn cần cấu hình API Key. Bạn có thể nhận Key miễn phí từ Google AI Studio và thêm vào biến môi trường (Environment Variables).",
-    getFreeKey: "Nhận API Key Miễn Phí",
-    setupGuide: "Hướng dẫn cài Cloudflare"
+    getFreeKey: "Kết nối API Key",
+    setupGuide: "Hướng dẫn Cloudflare"
   }
 };
 
@@ -61,41 +61,50 @@ const App: React.FC = () => {
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
   const [isMonitorExpanded, setIsMonitorExpanded] = useState(window.innerWidth > 768);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
+  
+  // Trạng thái Key: true (có key), false (không có key), null (đang kiểm tra)
   const [isKeyReady, setIsKeyReady] = useState<boolean | null>(null);
 
   const t = useMemo(() => translations[state.language], [state.language]);
 
+  // Kiểm tra Key khi khởi động
   useEffect(() => {
-    const checkKeyStatus = async () => {
-      // 1. Kiểm tra biến môi trường (Cho Cloudflare)
-      const envKey = (globalThis as any).process?.env?.API_KEY;
-      if (envKey && envKey !== "" && envKey !== "YOUR_API_KEY") {
+    const checkKey = async () => {
+      // 1. Kiểm tra trực tiếp process.env.API_KEY
+      if (process.env.API_KEY && process.env.API_KEY !== "" && process.env.API_KEY !== "YOUR_API_KEY") {
         setIsKeyReady(true);
         return;
       }
 
-      // 2. Kiểm tra môi trường AI Studio
-      if ((window as any).aistudio) {
-        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
-        setIsKeyReady(hasKey);
+      // 2. Kiểm tra qua cửa sổ AI Studio (nếu có)
+      if (window.aistudio) {
+        try {
+          const hasKey = await window.aistudio.hasSelectedApiKey();
+          setIsKeyReady(hasKey);
+        } catch (e) {
+          setIsKeyReady(false);
+        }
       } else {
         setIsKeyReady(false);
       }
     };
-    checkKeyStatus();
+    checkKey();
   }, []);
 
   const handleConnectAI = async () => {
-    if ((window as any).aistudio) {
-      await (window as any).aistudio.openSelectKey();
+    if (window.aistudio) {
+      await window.aistudio.openSelectKey();
+      // Theo quy tắc race condition, chúng ta giả định chọn thành công và tiến tới app
       setIsKeyReady(true);
     } else {
       window.open("https://aistudio.google.com/app/apikey", "_blank");
+      // Sau khi mở link, có thể người dùng sẽ quay lại và reload hoặc ta thử cho phép truy cập
+      // Nhưng tốt nhất là giữ ở màn hình này cho đến khi process.env.API_KEY khả dụng
     }
   };
 
   const fetchAnalysis = useCallback(async () => {
-    if (isAnalyzing || !isKeyReady) return;
+    if (isAnalyzing) return;
     setIsAnalyzing(true);
     try {
       const result = await getChemicalAnalysis(state);
@@ -103,13 +112,14 @@ const App: React.FC = () => {
         setIsKeyReady(false);
       } else {
         setAnalysis(result);
+        setIsKeyReady(true);
       }
     } catch (e) {
       console.error(e);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [state, isAnalyzing, isKeyReady]);
+  }, [state, isAnalyzing]);
 
   const lastConfigRef = useRef("");
   useEffect(() => {
@@ -128,7 +138,7 @@ const App: React.FC = () => {
     return (
       <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-slate-500 font-mono text-[10px] uppercase tracking-widest">Waking up AI Engine...</p>
+        <p className="text-slate-500 font-mono text-[10px] uppercase tracking-widest animate-pulse">Initializing Lab...</p>
       </div>
     );
   }
@@ -137,8 +147,8 @@ const App: React.FC = () => {
     return (
       <div className="h-screen w-screen bg-[#020617] flex items-center justify-center p-6 font-sans">
         <div className="max-w-md w-full bg-slate-900/40 backdrop-blur-3xl border border-slate-800 p-10 rounded-[3rem] shadow-2xl text-center space-y-8 animate-in fade-in zoom-in duration-500">
-          <div className="mx-auto w-20 h-20 bg-amber-500/10 rounded-[2rem] flex items-center justify-center border border-amber-500/20">
-            <Key className="w-10 h-10 text-amber-500" />
+          <div className="mx-auto w-20 h-20 bg-blue-600/10 rounded-[2rem] flex items-center justify-center border border-blue-500/20">
+            <Key className="w-10 h-10 text-blue-500" />
           </div>
           <div className="space-y-3">
             <h1 className="text-3xl font-bold text-white tracking-tight">{t.activateAI}</h1>
@@ -155,20 +165,20 @@ const App: React.FC = () => {
             </button>
             
             <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700 text-left">
-               <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Cloudflare Tip:</p>
-               <p className="text-[11px] text-slate-300">Set <b>API_KEY</b> in your Environment Variables to use this app permanently for free.</p>
+               <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">How to fix:</p>
+               <p className="text-[11px] text-slate-300">If you already set the key in Cloudflare, try to <b>Refresh</b> the page or check if the variable name is exactly <b>API_KEY</b>.</p>
             </div>
           </div>
           
           <div className="pt-2">
             <a 
-              href="https://developers.cloudflare.com/pages/configuration/environment-variables/" 
+              href="https://aistudio.google.com/app/apikey" 
               target="_blank" 
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-[10px] text-slate-500 hover:text-blue-400 transition-colors font-bold uppercase tracking-[0.2em]"
             >
               <ExternalLink className="w-3 h-3" />
-              {t.setupGuide}
+              Get Key from Google
             </a>
           </div>
         </div>

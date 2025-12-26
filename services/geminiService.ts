@@ -3,21 +3,19 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { SimState, Language } from "../types";
 
 /**
- * Khởi tạo Client AI.
- * Ưu tiên lấy API_KEY từ biến môi trường (Cloudflare) 
- * để ứng dụng có thể chạy tự động mà không cần người dùng thao tác thêm.
+ * Lấy instance AI mới nhất. 
+ * Theo quy định, chúng ta tạo instance mới ngay trước khi gọi API.
  */
-const getAIClient = () => {
-  const apiKey = (globalThis as any).process?.env?.API_KEY;
-  if (!apiKey || apiKey === "" || apiKey === "YOUR_API_KEY") return null;
+const getAI = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return null;
   return new GoogleGenAI({ apiKey });
 };
 
-// Sử dụng model Flash để tối ưu chi phí (Free Tier) và tốc độ phản hồi.
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 export async function getChemicalAnalysis(state: SimState) {
-  const ai = getAIClient();
+  const ai = getAI();
   if (!ai) return { error: "KEY_REQUIRED" };
 
   const languagePrompt = state.language === Language.VI 
@@ -64,42 +62,35 @@ export async function getChemicalAnalysis(state: SimState) {
     return JSON.parse(response.text || "{}");
   } catch (error: any) {
     console.error("AI Analysis Error:", error);
-    if (error.status === 404 || error.status === 401) {
+    // Nếu lỗi do thực thể không tìm thấy hoặc lỗi xác thực
+    if (error.message?.includes("not found") || error.status === 401 || error.status === 404) {
       return { error: "KEY_REQUIRED" };
     }
     return null;
   }
 }
 
-let chatSession: any = null;
-let lastSessionKey = "";
-
 export async function chatWithAI(message: string, state: SimState) {
-  const ai = getAIClient();
+  const ai = getAI();
   if (!ai) return "ERROR_KEY_REQUIRED";
 
-  const sessionKey = `${state.electrolyte}-${state.anodeMaterial}-${state.language}`;
-  
-  if (!chatSession || lastSessionKey !== sessionKey) {
-    const systemInstruction = `
-      Bạn là Trợ lý ảo Phòng thí nghiệm Điện phân.
-      Ngữ cảnh: Điện phân ${state.electrolyte} (Anode: ${state.anodeMaterial}, Cathode: ${state.cathodeMaterial}).
-      Ngôn ngữ: ${state.language === Language.VI ? 'Tiếng Việt' : 'Tiếng Anh'}.
-      Hãy giải thích ngắn gọn, chính xác các hiện tượng hóa học.
-    `;
+  const systemInstruction = `
+    Bạn là Trợ lý ảo Phòng thí nghiệm Điện phân.
+    Ngữ cảnh: Điện phân ${state.electrolyte} (Anode: ${state.anodeMaterial}, Cathode: ${state.cathodeMaterial}).
+    Ngôn ngữ: ${state.language === Language.VI ? 'Tiếng Việt' : 'Tiếng Anh'}.
+    Hãy giải thích ngắn gọn, chính xác các hiện tượng hóa học.
+  `;
 
-    chatSession = ai.chats.create({
+  try {
+    const chat = ai.chats.create({
       model: DEFAULT_MODEL,
       config: { systemInstruction }
     });
-    lastSessionKey = sessionKey;
-  }
-
-  try {
-    const result = await chatSession.sendMessage({ message });
+    const result = await chat.sendMessage({ message });
     return result.text;
   } catch (error: any) {
-    if (error.status === 404) return "ERROR_KEY_REQUIRED";
+    console.error("Chat AI Error:", error);
+    if (error.status === 401 || error.status === 404) return "ERROR_KEY_REQUIRED";
     return "Hệ thống AI đang bận. Vui lòng thử lại sau.";
   }
 }
