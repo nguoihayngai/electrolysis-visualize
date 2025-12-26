@@ -2,25 +2,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SimState, Language } from "../types";
 
-/**
- * Hàm lấy instance AI an toàn.
- * Kiểm tra kỹ sự tồn tại của process.env trước khi truy cập.
- */
-const getAI = () => {
-  try {
-    const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : null;
-    if (!apiKey || apiKey === "YOUR_API_KEY") return null;
-    return new GoogleGenAI({ apiKey });
-  } catch (e) {
-    return null;
-  }
-};
-
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 export async function getChemicalAnalysis(state: SimState) {
-  const ai = getAI();
-  if (!ai) return { error: "KEY_REQUIRED" };
+  // Tạo instance AI trực tiếp sử dụng biến môi trường
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const languagePrompt = state.language === Language.VI 
     ? "Vui lòng phân tích bằng tiếng Việt." 
@@ -58,16 +44,12 @@ export async function getChemicalAnalysis(state: SimState) {
     return JSON.parse(response.text || "{}");
   } catch (error: any) {
     console.error("AI Analysis Error:", error);
-    if (error.message?.includes("not found") || error.status === 401 || error.status === 404) {
-      return { error: "KEY_REQUIRED" };
-    }
     return null;
   }
 }
 
 export async function chatWithAI(message: string, state: SimState) {
-  const ai = getAI();
-  if (!ai) return "ERROR_KEY_REQUIRED";
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     const chat = ai.chats.create({
@@ -79,7 +61,7 @@ export async function chatWithAI(message: string, state: SimState) {
     const result = await chat.sendMessage({ message });
     return result.text;
   } catch (error: any) {
-    if (error.status === 401 || error.status === 404) return "ERROR_KEY_REQUIRED";
+    console.error("Chat AI Error:", error);
     return "AI đang bận, vui lòng thử lại.";
   }
 }
