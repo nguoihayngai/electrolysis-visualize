@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, FlaskConical, Target, ListChecks, X, BrainCircuit, RefreshCw, Send, User, MessageSquare } from 'lucide-react';
+import { Sparkles, FlaskConical, Target, ListChecks, X, BrainCircuit, RefreshCw, Send, User, MessageSquare, AlertCircle } from 'lucide-react';
 import { Language, SimState } from '../types';
 import { chatWithAI } from '../services/geminiService';
 
@@ -32,7 +32,8 @@ const translations = {
     applicationsHeader: "Applications",
     chatTitle: "Lab Assistant",
     chatPlaceholder: "Ask something...",
-    chatIntro: "Hello! How can I help with this reaction?"
+    chatIntro: "Hello! How can I help with this reaction?",
+    errorTitle: "AI Connection Error"
   },
   [Language.VI]: {
     header: "Trí Tuệ Phòng Lab",
@@ -46,7 +47,8 @@ const translations = {
     applicationsHeader: "Ứng Dụng Thực Tế",
     chatTitle: "Hỏi Chuyên Gia Lab",
     chatPlaceholder: "Hỏi về phản ứng...",
-    chatIntro: "Chào bạn! Tôi có thể giúp gì về phản ứng này không?"
+    chatIntro: "Chào bạn! Tôi có thể giúp gì về phản ứng này không?",
+    errorTitle: "Lỗi Kết Nối AI"
   }
 };
 
@@ -84,6 +86,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
 
   if (!isVisible) return null;
 
+  // Kiểm tra nếu kết quả trả về là một lỗi
+  const hasError = analysis && analysis.error;
+
   return (
     <aside className="fixed inset-y-0 right-0 z-[60] w-full sm:w-[450px] border-l border-slate-800 bg-slate-900/95 sm:bg-slate-900/50 backdrop-blur-2xl flex flex-col shadow-2xl transition-all duration-300 animate-in slide-in-from-right shrink-0">
       {/* Header */}
@@ -98,7 +103,30 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6 md:space-y-8" ref={scrollRef}>
-        {!analysis && !isLoading ? (
+        {isLoading ? (
+          <div className="space-y-6 animate-pulse pt-4">
+              {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="h-24 bg-slate-800/50 rounded-xl" />
+              ))}
+          </div>
+        ) : hasError ? (
+          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-4 p-4">
+            <div className="p-4 bg-rose-500/10 rounded-full border border-rose-500/20">
+              <AlertCircle className="w-10 h-10 text-rose-500" />
+            </div>
+            <h3 className="text-white font-bold">{t.errorTitle}</h3>
+            <p className="text-xs text-slate-400 font-mono bg-black/40 p-3 rounded-lg border border-slate-800 w-full break-words">
+              {analysis.error}
+            </p>
+            <button 
+              onClick={onFetchAnalysis}
+              className="mt-4 flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-lg text-sm transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+              {t.btnUpdate}
+            </button>
+          </div>
+        ) : !analysis ? (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-6">
             <div className="relative">
                <BrainCircuit className="w-12 h-12 md:w-16 md:h-16 text-slate-700" />
@@ -113,7 +141,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
               {t.btnGenerate}
             </button>
           </div>
-        ) : analysis ? (
+        ) : (
           <div className="space-y-6 md:space-y-8 pb-10">
             <section className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
               <div className="flex items-center gap-2 mb-2 text-rose-400">
@@ -189,17 +217,11 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
               </div>
             </section>
           </div>
-        ) : (
-          <div className="space-y-6 animate-pulse">
-              {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="h-20 bg-slate-800/50 rounded-xl" />
-              ))}
-          </div>
         )}
       </div>
 
       {/* Chat Input */}
-      {analysis && (
+      {analysis && !hasError && (
         <div className="p-3 md:p-4 border-t border-slate-800/50 bg-slate-900/95 sticky bottom-0">
           <form onSubmit={handleSendMessage} className="relative">
             <input 
