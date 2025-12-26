@@ -4,7 +4,7 @@ export const onRequestPost = async (context) => {
     const { history, message } = await context.request.json();
     
     // Lấy API Key từ Cloudflare Environment Variables
-    const API_KEY = context.env.API_KEY; 
+    const API_KEY = context.env.GEMINI_API_KEY; 
 
     // Gọi trực tiếp đến API của Google (không cần cài thư viện nặng nề)
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
