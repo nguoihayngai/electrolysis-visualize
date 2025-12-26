@@ -79,19 +79,22 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
     setMessages(prev => [...prev, { role: 'user', text: userText }]);
     setIsChatLoading(true);
 
-    const response = await chatWithAI(userText, state);
-    setMessages(prev => [...prev, { role: 'ai', text: response || 'No response.' }]);
-    setIsChatLoading(false);
+    try {
+      const response = await chatWithAI(userText, state);
+      setMessages(prev => [...prev, { role: 'ai', text: response || 'No response.' }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'ai', text: 'Sorry, I encountered an error.' }]);
+    } finally {
+      setIsChatLoading(false);
+    }
   };
 
   if (!isVisible) return null;
 
-  // Kiểm tra nếu kết quả trả về là một lỗi
   const hasError = analysis && analysis.error;
 
   return (
     <aside className="fixed inset-y-0 right-0 z-[60] w-full sm:w-[450px] border-l border-slate-800 bg-slate-900/95 sm:bg-slate-900/50 backdrop-blur-2xl flex flex-col shadow-2xl transition-all duration-300 animate-in slide-in-from-right shrink-0">
-      {/* Header */}
       <div className="flex items-center justify-between p-4 md:p-6 border-b border-slate-800/50">
         <div className="flex items-center gap-3">
           <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
@@ -177,13 +180,11 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
               </p>
             </section>
 
-            {/* Chat Area */}
             <section className="pt-6 border-t border-slate-800/50">
               <div className="flex items-center gap-2 mb-4 text-blue-400">
                 <MessageSquare className="w-4 h-4" />
                 <h3 className="text-[10px] font-bold uppercase">{t.chatTitle}</h3>
               </div>
-              
               <div className="space-y-4 mb-4">
                 {messages.length === 0 && (
                    <div className="text-[10px] md:text-xs text-slate-500 italic bg-slate-800/30 p-3 rounded-lg border border-slate-700/30">
@@ -220,7 +221,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
         )}
       </div>
 
-      {/* Chat Input */}
       {analysis && !hasError && (
         <div className="p-3 md:p-4 border-t border-slate-800/50 bg-slate-900/95 sticky bottom-0">
           <form onSubmit={handleSendMessage} className="relative">
