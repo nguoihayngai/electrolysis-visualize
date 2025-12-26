@@ -2,34 +2,48 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SimState, Language } from "../types";
 
+/**
+ * Khởi tạo Client AI.
+ * Ưu tiên lấy API_KEY từ biến môi trường (Cloudflare) 
+ * để ứng dụng có thể chạy tự động mà không cần người dùng thao tác thêm.
+ */
+const getAIClient = () => {
+  const apiKey = (globalThis as any).process?.env?.API_KEY;
+  if (!apiKey || apiKey === "" || apiKey === "YOUR_API_KEY") return null;
+  return new GoogleGenAI({ apiKey });
+};
+
+// Sử dụng model Flash để tối ưu chi phí (Free Tier) và tốc độ phản hồi.
+const DEFAULT_MODEL = "gemini-3-flash-preview";
+
 export async function getChemicalAnalysis(state: SimState) {
-  // Khởi tạo dynamic: Tạo instance mới mỗi khi gọi hàm
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIClient();
+  if (!ai) return { error: "KEY_REQUIRED" };
 
   const languagePrompt = state.language === Language.VI 
-    ? "Please provide the analysis in Vietnamese." 
-    : "Please provide the analysis in English.";
+    ? "Vui lòng phân tích bằng tiếng Việt." 
+    : "Please analyze in English.";
 
   const prompt = `
-    Analyze the following electrolysis setup:
-    Electrolyte: ${state.electrolyte}
-    Anode (+): ${state.anodeMaterial}
-    Cathode (-): ${state.cathodeMaterial}
-    Voltage: ${state.voltage}V
+    Phân tích hóa học chuyên sâu cho thí nghiệm điện phân:
+    - Chất điện phân: ${state.electrolyte}
+    - Vật liệu Anode (+): ${state.anodeMaterial}
+    - Vật liệu Cathode (-): ${state.cathodeMaterial}
+    - Điện áp DC: ${state.voltage}V
     
     ${languagePrompt}
 
-    Provide a detailed explanation of:
-    1. The half-reaction at the Anode.
-    2. The half-reaction at the Cathode.
-    3. The overall chemical equation.
-    4. Observation details (colors, gas types, plating).
-    5. Real-world applications of this specific process.
+    Trả về JSON:
+    - anodeReaction: Phản ứng tại cực dương.
+    - cathodeReaction: Phản ứng tại cực âm.
+    - overallEquation: Phương trình tổng quát.
+    - observations: Hiện tượng quan sát được.
+    - applications: Ứng dụng thực tế.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: DEFAULT_MODEL,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -49,57 +63,43 @@ export async function getChemicalAnalysis(state: SimState) {
 
     return JSON.parse(response.text || "{}");
   } catch (error: any) {
-    console.error("Gemini Analysis Error:", error);
-    // Nếu lỗi do Key (404/401), báo lại cho App để yêu cầu chọn lại Key
-    if (error.message?.includes("not found") || error.status === 404) {
-      return { error: "KEY_NOT_FOUND" };
+    console.error("AI Analysis Error:", error);
+    if (error.status === 404 || error.status === 401) {
+      return { error: "KEY_REQUIRED" };
     }
     return null;
   }
 }
 
-// Global chat instance state
-let activeChat: any = null;
-let lastStateHash = "";
+let chatSession: any = null;
+let lastSessionKey = "";
 
 export async function chatWithAI(message: string, state: SimState) {
-  // Khởi tạo dynamic cho chat
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIClient();
+  if (!ai) return "ERROR_KEY_REQUIRED";
+
+  const sessionKey = `${state.electrolyte}-${state.anodeMaterial}-${state.language}`;
   
-  const currentStateHash = `${state.electrolyte}-${state.anodeMaterial}-${state.cathodeMaterial}`;
-  
-  // Re-initialize chat if config changed or not exists
-  if (!activeChat || currentStateHash !== lastStateHash) {
+  if (!chatSession || lastSessionKey !== sessionKey) {
     const systemInstruction = `
-      You are an expert chemist assistant in a virtual electrolysis lab.
-      Current Setup:
-      - Electrolyte: ${state.electrolyte}
-      - Anode: ${state.anodeMaterial}
-      - Cathode: ${state.cathodeMaterial}
-      - Voltage: ${state.voltage}V
-      
-      Instructions:
-      - Keep answers concise and scientifically accurate.
-      - Use markdown for formulas (e.g., H₂O).
-      - Respond in ${state.language === Language.VI ? 'Vietnamese' : 'English'}.
-      - Explain the physics and chemistry behind the user's observations.
+      Bạn là Trợ lý ảo Phòng thí nghiệm Điện phân.
+      Ngữ cảnh: Điện phân ${state.electrolyte} (Anode: ${state.anodeMaterial}, Cathode: ${state.cathodeMaterial}).
+      Ngôn ngữ: ${state.language === Language.VI ? 'Tiếng Việt' : 'Tiếng Anh'}.
+      Hãy giải thích ngắn gọn, chính xác các hiện tượng hóa học.
     `;
 
-    activeChat = ai.chats.create({
-      model: 'gemini-3-flash-preview',
+    chatSession = ai.chats.create({
+      model: DEFAULT_MODEL,
       config: { systemInstruction }
     });
-    lastStateHash = currentStateHash;
+    lastSessionKey = sessionKey;
   }
 
   try {
-    const result = await activeChat.sendMessage({ message });
+    const result = await chatSession.sendMessage({ message });
     return result.text;
   } catch (error: any) {
-    console.error("Chat Error:", error);
-    if (error.message?.includes("not found") || error.status === 404) {
-      return "ERROR_KEY_REQUIRED";
-    }
-    return "Error connecting to Lab Assistant.";
+    if (error.status === 404) return "ERROR_KEY_REQUIRED";
+    return "Hệ thống AI đang bận. Vui lòng thử lại sau.";
   }
 }
