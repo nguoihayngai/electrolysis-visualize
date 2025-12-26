@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Settings, Play, Pause, RefreshCw, Zap, Beaker, Atom, Sparkles, Activity, Menu, X } from 'lucide-react';
+import { Settings, Play, Pause, RefreshCw, Zap, Beaker, Atom, Sparkles, Activity, Menu, X, ShieldCheck, ExternalLink } from 'lucide-react';
 import ElectrolysisSim from './components/ElectrolysisSim';
 import Controls from './components/Controls';
 import AnalysisPanel from './components/AnalysisPanel';
@@ -18,7 +18,11 @@ const translations = {
     config: "Experiment Config",
     aiActive: "AI Analysis Optional",
     showAnalysis: "Lab Intelligence",
-    showMonitor: "Monitor"
+    showMonitor: "Monitor",
+    activateAI: "Connect Google Billing",
+    activateDesc: "To use high-quality AI features, please connect your Google Cloud project. This uses your own API quota and billing plan.",
+    billingInfo: "Check Billing & Quota",
+    btnConnect: "Connect with Google Cloud"
   },
   [Language.VI]: {
     title: "Điện Phân",
@@ -29,7 +33,11 @@ const translations = {
     config: "Cấu Hình Thí Nghiệm",
     aiActive: "AI Phân tích",
     showAnalysis: "Trí Tuệ Lab",
-    showMonitor: "Chỉ Số"
+    showMonitor: "Chỉ Số",
+    activateAI: "Kết nối Google Billing",
+    activateDesc: "Để sử dụng các tính năng AI chuyên sâu, vui lòng kết nối với dự án Google Cloud của bạn. Ứng dụng sẽ sử dụng hạn mức và gói thanh toán cá nhân của bạn.",
+    billingInfo: "Kiểm tra Thanh toán & Hạn mức",
+    btnConnect: "Kết nối Google Cloud"
   }
 };
 
@@ -59,29 +67,58 @@ const App: React.FC = () => {
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
   const [isMonitorExpanded, setIsMonitorExpanded] = useState(window.innerWidth > 768);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
+  const [isKeySelected, setIsKeySelected] = useState<boolean | null>(null);
 
   const t = useMemo(() => translations[state.language], [state.language]);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setIsKeySelected(hasKey);
+      } else {
+        setIsKeySelected(true);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenSelectKey = async () => {
+    if (window.aistudio) {
+      await window.aistudio.openSelectKey();
+      setIsKeySelected(true);
+    }
+  };
 
   const fetchAnalysis = useCallback(async () => {
     if (isAnalyzing) return;
     setIsAnalyzing(true);
-    const result = await getChemicalAnalysis(state);
-    setAnalysis(result);
-    setIsAnalyzing(false);
+    try {
+      const result = await getChemicalAnalysis(state);
+      if (result?.error === "KEY_NOT_FOUND") {
+        setIsKeySelected(false);
+      } else {
+        setAnalysis(result);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAnalyzing(false);
+    }
   }, [state, isAnalyzing]);
 
-  // Logic tự động phân tích khi thay đổi cấu hình hoặc bắt đầu
   const lastConfigRef = useRef("");
   useEffect(() => {
+    if (!isKeySelected) return;
     const currentConfig = `${state.electrolyte}-${state.anodeMaterial}-${state.cathodeMaterial}`;
     if (state.autoAnalyze && (state.isRunning || currentConfig !== lastConfigRef.current)) {
       if (currentConfig !== lastConfigRef.current) {
-        setAnalysis(null); // Reset cũ để hiện loading nếu cần
+        setAnalysis(null);
         fetchAnalysis();
         lastConfigRef.current = currentConfig;
       }
     }
-  }, [state.electrolyte, state.anodeMaterial, state.cathodeMaterial, state.autoAnalyze, state.isRunning, fetchAnalysis]);
+  }, [state.electrolyte, state.anodeMaterial, state.cathodeMaterial, state.autoAnalyze, state.isRunning, fetchAnalysis, isKeySelected]);
 
   const toggleSimulation = () => {
     setState(prev => ({ ...prev, isRunning: !prev.isRunning }));
@@ -119,6 +156,37 @@ const App: React.FC = () => {
     const totalIons = stats.cationCount + stats.anionCount;
     return (state.voltage * 1.25) * (totalIons / 40);
   }, [state.isRunning, state.voltage, stats.cationCount, stats.anionCount]);
+
+  if (isKeySelected === false) {
+    return (
+      <div className="h-screen w-screen bg-slate-950 flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center">
+            <ShieldCheck className="w-8 h-8 text-blue-500" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-2">{t.activateAI}</h1>
+            <p className="text-slate-400 text-sm leading-relaxed">{t.activateDesc}</p>
+          </div>
+          <button 
+            onClick={handleOpenSelectKey}
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 group shadow-lg shadow-blue-900/20"
+          >
+            <ExternalLink className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            {t.btnConnect}
+          </button>
+          <a 
+            href="https://ai.google.dev/gemini-api/docs/billing" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-blue-400 transition-colors font-bold uppercase tracking-wider"
+          >
+            {t.billingInfo}
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
