@@ -156,6 +156,7 @@ const App: React.FC = () => {
             language={state.language} 
             onClose={() => setIsAnalysisExpanded(false)} 
             onFetchAnalysis={fetchAnalysis} 
+            onToggleAutoAnalyze={() => setState(p => ({ ...p, autoAnalyze: !p.autoAnalyze }))}
             state={state} 
           />
         )}
