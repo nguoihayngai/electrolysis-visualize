@@ -9,7 +9,8 @@ export enum ElectrolyteType {
 export enum ElectrodeMaterial {
   PLATINUM = 'Platinum (Inert)',
   COPPER = 'Copper (Reactive)',
-  GRAPHITE = 'Graphite (Inert)'
+  GRAPHITE = 'Graphite (Inert)',
+  ZINC = 'Zinc (Reactive)'
 }
 
 export enum Language {
@@ -23,6 +24,8 @@ export interface SoluteStats {
   secondaryProductMolarity: number;
   ph: number;
   temp: number;
+  anodeMass: number;
+  cathodeMass: number;
 }
 
 export interface SimState {

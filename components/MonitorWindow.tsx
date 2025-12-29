@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Activity, Thermometer, Zap, FlaskConical, BarChart3 } from 'lucide-react';
+import { X, Activity, Thermometer, Zap, FlaskConical, BarChart3, Weight } from 'lucide-react';
 import { Language, SoluteStats, ElectrolyteType } from '../types';
 
 interface MonitorWindowProps {
@@ -23,7 +23,10 @@ const translations = {
     temp: "Temp",
     secondary: "Product",
     molarity: "Conc.",
-    ions: "Ions"
+    ions: "Ions",
+    electrodes: "ELECTRODES",
+    massAnode: "Mass (A)",
+    massCathode: "Mass (C)"
   },
   [Language.VI]: {
     title: "CHỈ SỐ",
@@ -35,7 +38,10 @@ const translations = {
     temp: "Nhiệt độ",
     secondary: "Sản phẩm",
     molarity: "Nồng độ",
-    ions: "Số Ion"
+    ions: "Số Ion",
+    electrodes: "ĐIỆN CỰC",
+    massAnode: "M (Dương)",
+    massCathode: "M (Âm)"
   }
 };
 
@@ -75,8 +81,26 @@ const MonitorWindow: React.FC<MonitorWindowProps> = ({ isVisible, onClose, stats
       </div>
 
       <div className="p-3 space-y-4">
-        {/* Physics */}
+        {/* Electrodes Mass */}
         <section className="space-y-2">
+          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase">
+            <Weight className="w-2.5 h-2.5" />
+            <span>{t.electrodes}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/30">
+              <p className="text-[8px] text-slate-500 uppercase mb-0.5 font-bold">{t.massAnode}</p>
+              <p className="text-sm font-mono text-rose-400 truncate">{stats.anodeMass.toFixed(3)}<span className="text-[8px] ml-0.5 text-slate-500">g</span></p>
+            </div>
+            <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/30">
+              <p className="text-[8px] text-slate-500 uppercase mb-0.5 font-bold">{t.massCathode}</p>
+              <p className="text-sm font-mono text-emerald-400 truncate">{stats.cathodeMass.toFixed(3)}<span className="text-[8px] ml-0.5 text-slate-500">g</span></p>
+            </div>
+          </div>
+        </section>
+
+        {/* Physics */}
+        <section className="space-y-2 border-t border-slate-800/50 pt-3">
           <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase">
             <Zap className="w-2.5 h-2.5" />
             <span>{t.physics}</span>

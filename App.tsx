@@ -47,7 +47,9 @@ const App: React.FC = () => {
     anionCount: 0,
     ph: 7.0,
     temp: 25.0,
-    secondaryProductMolarity: 0
+    secondaryProductMolarity: 0,
+    anodeMass: 10.0,
+    cathodeMass: 10.0
   });
 
   const [analysis, setAnalysis] = useState<any>(null);

@@ -1,33 +1,33 @@
+
+import { GoogleGenAI } from "@google/genai";
+
 // functions/api/chat.ts
-export const onRequestPost = async (context) => {
+export const onRequestPost = async (context: any) => {
   try {
     const { history, message } = await context.request.json();
     
-    // Lấy API Key từ Cloudflare Environment Variables
-    const API_KEY = context.env.GEMINI_API_KEY; 
+    // Fixed: Always use the @google/genai SDK and process.env.API_KEY.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // Gọi trực tiếp đến API của Google (không cần cài thư viện nặng nề)
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          { role: 'user', parts: [{ text: "Context của trường Hòn Gai..." }] },
-          ...history,
-          { role: 'user', parts: [{ text: message }] }
-        ]
-      })
+    // Fixed: MUST NOT use gemini-1.5-flash. Using gemini-3-flash-preview instead.
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [
+        { role: 'user', parts: [{ text: "Context của trường Hòn Gai..." }] },
+        ...history,
+        { role: 'user', parts: [{ text: message }] }
+      ]
     });
 
-    const data = await response.json();
-    const botResponse = data.candidates[0].content.parts[0].text;
-
-    return new Response(JSON.stringify({ text: botResponse }), {
+    // Fixed: Directly accessing .text property of GenerateContentResponse.
+    return new Response(JSON.stringify({ text: response.text }), {
       headers: { 'Content-Type': 'application/json' }
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "Lỗi hệ thống" }), { status: 500 });
+  } catch (error: any) {
+    console.error("Chat API Error:", error);
+    return new Response(JSON.stringify({ error: "Lỗi hệ thống: " + (error.message || "Unknown error") }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

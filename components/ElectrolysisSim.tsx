@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { SimState, ElectrolyteType, ElectrodeMaterial, Particle, Language, SoluteStats } from '../types';
 
 interface ElectrolysisSimProps {
@@ -73,6 +73,11 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
   const phRef = useRef<number>(7.0);
   const tempRef = useRef<number>(25.0);
   const secondaryMolarityRef = useRef<number>(0);
+  
+  // Electrode Mass Logic
+  const anodeMassRef = useRef<number>(10.0);
+  const cathodeMassRef = useRef<number>(10.0);
+  const INITIAL_MASS = 10.0;
 
   const t = translations[state.language];
 
@@ -84,68 +89,75 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
   const BEAKER_LEFT = 158;
   const BEAKER_RIGHT = 442;
   const ELECTRODE_TOP = 250;
+  const ELECTRODE_MAX_HEIGHT = 280;
 
   const getIonConfig = (electrolyte: ElectrolyteType) => {
-    const isCopperAnode = state.anodeMaterial === ElectrodeMaterial.COPPER;
+    const isReactiveAnode = state.anodeMaterial === ElectrodeMaterial.COPPER || state.anodeMaterial === ElectrodeMaterial.ZINC;
+    const anodeIonLabel = state.anodeMaterial === ElectrodeMaterial.ZINC ? 'Zn2+' : 'Cu2+';
 
     switch (electrolyte) {
       case ElectrolyteType.CUSO4:
         return { 
           cation: 'Cu2+', anion: 'SO42-', sourceLabel: 'CuSO4',
           cathodeProduct: 'Cu', 
-          anodeProduct: isCopperAnode ? 'Cu2+' : 'O2',
-          secondaryProduct: isCopperAnode ? '' : 'H2SO4', 
-          secondaryTrigger: isCopperAnode ? 'none' : 'anode',
+          anodeProduct: isReactiveAnode ? anodeIonLabel : 'O2',
+          secondaryProduct: isReactiveAnode ? '' : 'H2SO4', 
+          secondaryTrigger: isReactiveAnode ? 'none' : 'anode',
           cathodeType: 'plating', 
-          anodeType: isCopperAnode ? 'dissolving' : 'bubble_o'
+          anodeType: isReactiveAnode ? 'dissolving' : 'bubble_o'
         };
       case ElectrolyteType.NACL:
         return { 
           cation: 'Na+', anion: 'Cl-', sourceLabel: 'NaCl',
           cathodeProduct: 'H2 + OH-', 
-          anodeProduct: isCopperAnode ? 'Cu2+' : 'Cl2',
+          anodeProduct: isReactiveAnode ? anodeIonLabel : 'Cl2',
           secondaryProduct: state.hasMembrane ? 'NaOH' : 'NaClO', 
-          secondaryTrigger: state.hasMembrane ? 'cathode' : (isCopperAnode ? 'none' : 'bulk'),
+          secondaryTrigger: state.hasMembrane ? 'cathode' : (isReactiveAnode ? 'none' : 'bulk'),
           cathodeType: 'bubble_h', 
-          anodeType: isCopperAnode ? 'dissolving' : 'bubble_cl'
+          anodeType: isReactiveAnode ? 'dissolving' : 'bubble_cl'
         };
       case ElectrolyteType.KI:
         return { 
           cation: 'K+', anion: 'I-', sourceLabel: 'KI',
           cathodeProduct: 'H2 + OH-', 
-          anodeProduct: isCopperAnode ? 'Cu2+' : 'I2',
+          anodeProduct: isReactiveAnode ? anodeIonLabel : 'I2',
           secondaryProduct: 'KOH', 
           secondaryTrigger: 'cathode',
           cathodeType: 'bubble_h', 
-          anodeType: isCopperAnode ? 'dissolving' : 'bubble_i'
+          anodeType: isReactiveAnode ? 'dissolving' : 'bubble_i'
         };
       case ElectrolyteType.WATER:
       default:
         return { 
           cation: 'H+', anion: 'OH-', sourceLabel: 'H2O',
           cathodeProduct: 'H2', 
-          anodeProduct: isCopperAnode ? 'Cu2+' : 'O2',
+          anodeProduct: isReactiveAnode ? anodeIonLabel : 'O2',
           secondaryProduct: '', 
           secondaryTrigger: 'none',
           cathodeType: 'bubble_h', 
-          anodeType: isCopperAnode ? 'dissolving' : 'bubble_o'
+          anodeType: isReactiveAnode ? 'dissolving' : 'bubble_o'
         };
     }
   };
 
   const getElectrodeColor = (material: ElectrodeMaterial) => {
     if (material === ElectrodeMaterial.COPPER) return '#92400e'; 
+    if (material === ElectrodeMaterial.ZINC) return '#94a3b8'; 
     if (material === ElectrodeMaterial.GRAPHITE) return '#111827';
-    return '#94a3b8';
+    return '#cbd5e1'; 
   };
 
-  const ionConfig = getIonConfig(state.electrolyte);
+  // Fixed: useMemo was missing from imports but used here.
+  const ionConfig = useMemo(() => getIonConfig(state.electrolyte), [state.electrolyte, state.anodeMaterial]);
 
   useEffect(() => {
     const initialParticles: Particle[] = [];
     phRef.current = 7.0;
     tempRef.current = 25.0;
     secondaryMolarityRef.current = 0;
+    anodeMassRef.current = INITIAL_MASS;
+    cathodeMassRef.current = INITIAL_MASS;
+
     const count = 35;
     for (let i = 0; i < count; i++) {
       const isCation = Math.random() > 0.5;
@@ -178,12 +190,8 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
       }
 
       if (state.isRunning && Math.random() < (0.1 + state.voltage * 0.12)) {
-        nextParticles.push({
-          id: Math.random(), x: 0, y: 0, type: 'electron', progress: 0, pathType: 'negative_wire', vx: 0, vy: 0
-        });
-        nextParticles.push({
-          id: Math.random(), x: 0, y: 0, type: 'electron', progress: 0, pathType: 'positive_wire', vx: 0, vy: 0
-        });
+        nextParticles.push({ id: Math.random(), x: 0, y: 0, type: 'electron', progress: 0, pathType: 'negative_wire', vx: 0, vy: 0 });
+        nextParticles.push({ id: Math.random(), x: 0, y: 0, type: 'electron', progress: 0, pathType: 'positive_wire', vx: 0, vy: 0 });
       }
 
       nextParticles = nextParticles.map(p => {
@@ -234,6 +242,11 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
 
           if (p.type === 'cation' && inCathodeRange) {
             if (Math.random() < 0.06 * (state.voltage / 10)) {
+              // Mass change on Cathode
+              if (ionConfig.cathodeType === 'plating') {
+                cathodeMassRef.current += 0.001 * state.voltage;
+              }
+
               if (state.electrolyte === ElectrolyteType.NACL || state.electrolyte === ElectrolyteType.KI) {
                 phRef.current = Math.min(14, phRef.current + 0.02);
                 secondaryMolarityRef.current += 0.001;
@@ -252,16 +265,20 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
           if (p.type === 'anion' && inAnodeRange) {
             if (Math.random() < 0.06 * (state.voltage / 10)) {
               if (ionConfig.anodeType === 'dissolving') {
+                 // Mass change on Anode
+                 anodeMassRef.current = Math.max(0.1, anodeMassRef.current - 0.001 * state.voltage);
+
+                 const isZinc = state.anodeMaterial === ElectrodeMaterial.ZINC;
                  currentNewParticles.push({
                    id: Math.random(),
                    x: ANODE_X - 10,
                    y: p.y,
                    type: 'cation',
-                   label: 'Cu2+',
+                   label: isZinc ? 'Zn2+' : 'Cu2+',
                    vx: -1.2 - Math.random() * 0.75,
                    vy: (Math.random() - 0.5) * 0.75
                  });
-                 setEvents(ev => [...ev, { id: Math.random(), x: ANODE_X, y: p.y, text: 'Cu2+', subtext: t.dissolving, type: 'oxidation', life: 1.0 }]);
+                 setEvents(ev => [...ev, { id: Math.random(), x: ANODE_X, y: p.y, text: isZinc ? 'Zn2+' : 'Cu2+', subtext: t.dissolving, type: 'oxidation', life: 1.0 }]);
                  return true; 
               } else {
                 if (state.electrolyte === ElectrolyteType.CUSO4) {
@@ -282,7 +299,7 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
         return true;
       });
 
-      if (state.isRunning && !state.hasMembrane && state.electrolyte === ElectrolyteType.NACL && state.anodeMaterial !== ElectrodeMaterial.COPPER) {
+      if (state.isRunning && !state.hasMembrane && state.electrolyte === ElectrolyteType.NACL && state.anodeMaterial !== ElectrodeMaterial.COPPER && state.anodeMaterial !== ElectrodeMaterial.ZINC) {
          if (Math.random() < 0.02) {
              const bx = CENTER_X + (Math.random() - 0.5) * 100;
              const by = WATER_TOP + 50 + Math.random() * 150;
@@ -306,7 +323,9 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
         anionCount: nextParticles.filter(p => p.type === 'anion').length,
         ph: phRef.current,
         temp: tempRef.current,
-        secondaryProductMolarity: secondaryMolarityRef.current
+        secondaryProductMolarity: secondaryMolarityRef.current,
+        anodeMass: anodeMassRef.current,
+        cathodeMass: cathodeMassRef.current
       });
 
       return nextParticles;
@@ -328,11 +347,15 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
       return { x: 220, y: 200 + (50 * ((progress-0.75)/0.25)) };
     } else {
       if (progress < 0.25) return { x: 380, y: 250 - (50 * (progress/0.25)) };
-      if (progress < 0.5) return { x: 380 + (140 * ((progress-0.25)/0.25)), y: 200 };
+      if (progress < 0.5) return { x: 380 + (140 * ((progress-0.25)/0.25)) };
       if (progress < 0.75) return { x: 520, y: 200 - (150 * ((progress-0.5)/0.25)) };
       return { x: 520 - (170 * ((progress-0.75)/0.25)), y: 50 };
     }
   };
+
+  // Visual scaling factors for electrodes
+  const anodeVisualScale = anodeMassRef.current / INITIAL_MASS;
+  const cathodeVisualScale = cathodeMassRef.current / INITIAL_MASS;
 
   return (
     <div className="w-full h-full flex items-center justify-center p-2 sm:p-8 overflow-hidden touch-none">
@@ -355,6 +378,7 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
           </linearGradient>
           <filter id="glow-electron"><feGaussianBlur stdDeviation="2" result="blur" /><feColorMatrix type="matrix" values="0 0 0 0 1   0 0 0 0 0.9   0 0 0 0 0.1  0 0 0 1 0" /><feComposite in="SourceGraphic" operator="over" /></filter>
           <filter id="glow-bulk"><feGaussianBlur stdDeviation="12" result="blur" /><feColorMatrix type="matrix" values="0 0 0 0 0.6   0 0 0 0 1   0 0 0 0 0.3  0 0 0 1 0" /><feComposite in="SourceGraphic" operator="over" /></filter>
+          <filter id="shadow-electrode"><feDropShadow dx="0" dy="0" stdDeviation="2" floodOpacity="0.5"/></filter>
         </defs>
 
         {/* Beaker & Water */}
@@ -386,9 +410,47 @@ const ElectrolysisSim: React.FC<ElectrolysisSimProps> = ({ state, onStatsUpdate 
           </>
         )}
 
-        {/* Electrodes */}
-        <rect x="210" y="250" width="20" height="280" fill={getElectrodeColor(state.cathodeMaterial)} fillOpacity="0.95" rx="3" stroke="#0f172a" strokeWidth="1" />
-        <rect x="370" y="250" width="20" height="280" fill={getElectrodeColor(state.anodeMaterial)} fillOpacity="0.95" rx="3" stroke="#0f172a" strokeWidth="1" />
+        {/* Electrodes with dynamic sizing */}
+        {/* Cathode (-) */}
+        <rect 
+          x={220 - (10 * cathodeVisualScale)} 
+          y={250} 
+          width={20 * cathodeVisualScale} 
+          height={ELECTRODE_MAX_HEIGHT} 
+          fill={getElectrodeColor(state.cathodeMaterial)} 
+          fillOpacity="0.95" 
+          rx="3" 
+          stroke="#0f172a" 
+          strokeWidth="1" 
+          filter="url(#shadow-electrode)"
+        />
+        {/* Thêm hiệu ứng lớp phủ nếu là plating (màu đồng đặc trưng) */}
+        {ionConfig.cathodeType === 'plating' && (
+           <rect 
+             x={220 - (10 * cathodeVisualScale)} 
+             y={WATER_TOP} 
+             width={20 * cathodeVisualScale} 
+             height={BEAKER_BOTTOM - WATER_TOP - 45} 
+             fill="#b45309" 
+             fillOpacity="0.3" 
+             rx="2"
+             className="pointer-events-none"
+           />
+        )}
+
+        {/* Anode (+) */}
+        <rect 
+          x={380 - (10 * anodeVisualScale)} 
+          y={250} 
+          width={20 * anodeVisualScale} 
+          height={ELECTRODE_MAX_HEIGHT * anodeVisualScale} 
+          fill={getElectrodeColor(state.anodeMaterial)} 
+          fillOpacity="0.95" 
+          rx="3" 
+          stroke="#0f172a" 
+          strokeWidth="1" 
+          filter="url(#shadow-electrode)"
+        />
         
         <text x="220" y="240" textAnchor="middle" fill="#94a3b8" className="text-[10px] font-bold tracking-widest">{t.cathode}</text>
         <text x="380" y="240" textAnchor="middle" fill="#94a3b8" className="text-[10px] font-bold tracking-widest">{t.anode}</text>

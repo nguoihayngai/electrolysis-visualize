@@ -24,7 +24,8 @@ const translations = {
     materials: {
       [ElectrodeMaterial.PLATINUM]: 'Platinum (Inert)',
       [ElectrodeMaterial.COPPER]: 'Copper (Reactive)',
-      [ElectrodeMaterial.GRAPHITE]: 'Graphite (Inert)'
+      [ElectrodeMaterial.GRAPHITE]: 'Graphite (Inert)',
+      [ElectrodeMaterial.ZINC]: 'Zinc (Reactive)'
     }
   },
   [Language.VI]: {
@@ -43,7 +44,8 @@ const translations = {
     materials: {
       [ElectrodeMaterial.PLATINUM]: 'Bạch kim (Trơ)',
       [ElectrodeMaterial.COPPER]: 'Đồng (Phản ứng)',
-      [ElectrodeMaterial.GRAPHITE]: 'Than chì (Trơ)'
+      [ElectrodeMaterial.GRAPHITE]: 'Than chì (Trơ)',
+      [ElectrodeMaterial.ZINC]: 'Kẽm (Hoạt động)'
     }
   }
 };
