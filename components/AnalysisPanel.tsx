@@ -3,6 +3,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, FlaskConical, Target, ListChecks, X, BrainCircuit, RefreshCw, Send, User, MessageSquare, AlertCircle } from 'lucide-react';
 import { Language, SimState } from '../types';
 import { chatWithAI } from '../services/geminiService';
+import { marked } from 'marked';
+import markedKatex from 'marked-katex-extension';
+
+// Cấu hình marked với extension KaTeX
+marked.use(markedKatex({
+  throwOnError: false,
+  output: 'html',
+  displayMode: false
+}));
 
 interface Message {
   role: 'user' | 'ai';
@@ -55,6 +64,70 @@ const translations = {
   }
 };
 
+/**
+ * Bộ lọc Sanitizer nâng cao: 
+ * Đảm bảo khoảng cách an toàn cho LaTeX, đặc biệt là khi nằm trong ngoặc
+ */
+const sanitizeContent = (text: string): string => {
+  if (!text) return "";
+
+  let p = text;
+
+  // 1. Chuẩn hóa mũi tên
+  p = p.replace(/->/g, '\\rightarrow ');
+
+  // 2. Ép các tiêu đề ### phải nằm trên dòng riêng
+  p = p.replace(/([^\n])\s*###/g, '$1\n\n###');
+
+  // 3. Ép các khối công thức $$...$$ phải nằm trên dòng riêng
+  p = p.replace(/([^\n])\s*\$\$/g, (match, prevChar) => `${prevChar}\n\n$$`);
+  p = p.replace(/\$\$\s*([^\n\s])/g, (match, nextChar) => `$$\n\n${nextChar}`);
+
+  // 4. Xử lý Inline LaTeX $...$
+  // Luôn đảm bảo có khoảng trắng BAO QUANH dấu $ để tránh dính chữ/ngoặc
+  p = p.replace(/(?<!\$)\$([^\$]+)\$(?!\$)/g, (match, formula) => {
+    return ` $${formula.trim()}$ `;
+  });
+
+  // 5. Dọn dẹp dấu câu dính vào chữ thường, NHƯNG KHÔNG dính vào dấu $
+  // Chỉ xóa khoảng trắng trước dấu câu nếu ký tự trước đó KHÔNG phải là $
+  p = p.replace(/(?<!\$)\s+([,.\)\]\}!?;:])/g, '$1');
+  
+  // Chỉ xóa khoảng trắng sau dấu ngoặc mở nếu ký tự sau đó KHÔNG phải là $
+  p = p.replace(/([\(\[\{])\s+(?!\$)/g, '$1');
+
+  // 6. Thu gọn các khoảng trắng dư thừa khác nhưng giữ tối thiểu 1 space cạnh $
+  p = p.replace(/[ \t]{2,}/g, ' ');
+  p = p.replace(/\n{3,}/g, '\n\n');
+
+  return p.trim();
+};
+
+const MarkdownRenderer: React.FC<{ content: string; className?: string }> = ({ content, className = "" }) => {
+  const [html, setHtml] = useState("");
+
+  useEffect(() => {
+    if (content) {
+      try {
+        const sanitized = sanitizeContent(content);
+        const parsed = marked.parse(sanitized) as string;
+        setHtml(parsed);
+      } catch (e) {
+        setHtml(content);
+      }
+    } else {
+      setHtml("");
+    }
+  }, [content]);
+
+  return (
+    <div 
+      className={`markdown-content ${className}`}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+};
+
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVisible, language, onClose, onFetchAnalysis, onToggleAutoAnalyze, state }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -98,19 +171,16 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
 
   return (
     <>
-      {/* Backdrop overlay */}
       <div 
         className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[55] animate-fade-in"
         onClick={onClose}
       />
 
-      {/* Main Panel */}
       <aside className="fixed inset-y-0 right-0 z-[60] w-full sm:w-[450px] border-l border-slate-800 bg-slate-900/95 shadow-2xl flex flex-col animate-slide-in shrink-0">
-        {/* Header Section */}
         <div className="flex flex-col border-b border-slate-800/50 bg-slate-900/50">
           <div className="flex items-center justify-between p-4 md:p-6 pb-2">
             <div className="flex items-center gap-3">
-              <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
+              <BrainCircuit className="w-5 h-5 text-amber-400 shrink-0" />
               <h2 className="text-base md:text-lg font-bold text-white truncate">{t.header}</h2>
             </div>
             <div className="flex items-center gap-2">
@@ -120,7 +190,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
             </div>
           </div>
           
-          {/* Sub-header with Auto-Analyze Toggle */}
           <div className="px-4 md:px-6 pb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${state.autoAnalyze ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
@@ -135,7 +204,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
           </div>
         </div>
 
-        {/* Content Scroll Area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6 md:space-y-8" ref={scrollRef}>
           {isLoading ? (
             <div className="space-y-6 animate-pulse pt-4">
@@ -182,7 +250,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
                   <FlaskConical className="w-4 h-4" />
                   <h3 className="text-[10px] font-bold uppercase tracking-wider">{t.anodeHeader}</h3>
                 </div>
-                <p className="text-xs md:text-sm font-mono text-white leading-relaxed">{analysis.anodeReaction}</p>
+                <MarkdownRenderer content={analysis.anodeReaction} className="text-xs md:text-sm text-white" />
               </section>
 
               <section className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-slate-600 transition-colors">
@@ -190,7 +258,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
                   <FlaskConical className="w-4 h-4" />
                   <h3 className="text-[10px] font-bold uppercase tracking-wider">{t.cathodeHeader}</h3>
                 </div>
-                <p className="text-xs md:text-sm font-mono text-white leading-relaxed">{analysis.cathodeReaction}</p>
+                <MarkdownRenderer content={analysis.cathodeReaction} className="text-xs md:text-sm text-white" />
               </section>
 
               <section className="bg-blue-900/20 p-4 rounded-xl border border-blue-500/20 shadow-inner">
@@ -198,7 +266,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
                   <Target className="w-4 h-4" />
                   <h3 className="text-[10px] font-bold uppercase tracking-wider">{t.overallHeader}</h3>
                 </div>
-                <p className="text-xs md:text-sm font-mono font-bold text-blue-100">{analysis.overallEquation}</p>
+                <MarkdownRenderer content={analysis.overallEquation} className="text-xs md:text-sm font-bold text-blue-100" />
               </section>
 
               <section>
@@ -206,9 +274,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
                   <ListChecks className="w-4 h-4" />
                   <h3 className="text-[10px] font-bold uppercase tracking-wider">{t.observationsHeader}</h3>
                 </div>
-                <p className="text-xs md:text-sm text-slate-300 leading-relaxed italic border-l-2 border-slate-700 pl-4">
-                  "{analysis.observations}"
-                </p>
+                <MarkdownRenderer content={analysis.observations} className="text-xs md:text-sm text-slate-300 italic border-l-2 border-slate-700 pl-4" />
               </section>
 
               <section className="pt-6 border-t border-slate-800/50">
@@ -228,7 +294,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
                         {msg.role === 'user' ? <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" /> : <BrainCircuit className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400" />}
                       </div>
                       <div className={`p-2.5 md:p-3 rounded-2xl text-xs md:text-sm max-w-[85%] shadow-sm ${msg.role === 'user' ? 'bg-blue-600/20 text-blue-50 border border-blue-500/30' : 'bg-slate-800/60 text-slate-200 border border-slate-700/50'}`}>
-                        {msg.text}
+                        <MarkdownRenderer content={msg.text} />
                       </div>
                     </div>
                   ))}
@@ -252,7 +318,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, isVi
           )}
         </div>
 
-        {/* Footer Chat Input */}
         {analysis && !hasError && (
           <div className="p-3 md:p-4 border-t border-slate-800/50 bg-slate-900/95 sticky bottom-0">
             <form onSubmit={handleSendMessage} className="relative">
